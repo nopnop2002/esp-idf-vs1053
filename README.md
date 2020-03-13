@@ -5,8 +5,6 @@ I ported from from [here](https://github.com/baldram/ESP_VS1053_Library).
 # Software requirements
 esp-idf ver4.1 or later.   
 
----
-
 # Configure   
 You have to set this config value with menuconfig.   
 - CONFIG_ESP_WIFI_SSID   
@@ -28,8 +26,6 @@ make flash
 
 ![config-1](https://user-images.githubusercontent.com/6020549/76663983-3415df00-65c6-11ea-93db-9ec83e2601df.jpg)
 ![config-2](https://user-images.githubusercontent.com/6020549/76663991-35dfa280-65c6-11ea-8ef4-0c2701ce6b48.jpg)
-
----
 
 # Wireing  
 
