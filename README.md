@@ -38,7 +38,7 @@ make flash
 |CS|--|GPIO5(*2)|
 |DCS|--|GPIO16(*2)|
 
-(*1) External power if no VIN Pin
+(*1) External power if no VIN Pin.   
 (*2) You can change any GPIO using menuconfig.   
 
 
