@@ -350,8 +350,6 @@ static void client_task(void *pvParameters)
 		//int read_len = lwip_read(fd, buffer, MAX_HTTP_RECV_BUFFER);
 		if (read_len < 0) {
 			// I don't know why it is disconnected from the server.
-			// Maybe there is some bug.
-			// But i cannot find.
 			ESP_LOGW(pcTaskGetTaskName(0), "read_len = %d", read_len);
 			break;
 		}
