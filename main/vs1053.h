@@ -77,6 +77,7 @@ typedef struct {
     int16_t reset_pin;
     uint8_t curvol;                         // Current volume setting 0..100%
     uint8_t endFillByte;                    // Byte to send when stopping song
+    uint8_t chipVersion;                    // Version of hardware
     spi_device_handle_t SPIHandleLow;
     spi_device_handle_t SPIHandleFast;
 } VS1053_t;
@@ -118,6 +119,7 @@ bool isChipConnected(VS1053_t * dev);
 uint16_t getDecodedTime(VS1053_t * dev);                    // Provides SCI_DECODE_TIME register value
 
 void clearDecodedTime(VS1053_t * dev);                      // Clears SCI_DECODE_TIME register (sets 0x00)
+uint8_t getHardwareVersion(VS1053_t * dev);
 
 #endif /* MAIN_VS1053_H_ */
 

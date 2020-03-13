@@ -77,7 +77,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 	}
 }
 
-void wifi_init_sta(void)
+esp_err_t wifi_init_sta(void)
 {
 	s_wifi_event_group = xEventGroupCreate();
 
@@ -112,11 +112,13 @@ void wifi_init_sta(void)
 			pdFALSE,
 			portMAX_DELAY);
 
+	esp_err_t rcode = ESP_FAIL;
 	/* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
 	 * happened. */
 	if (bits & WIFI_CONNECTED_BIT) {
 		ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
 				 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+		rcode = ESP_OK;
 	} else if (bits & WIFI_FAIL_BIT) {
 		ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
 				 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
@@ -127,6 +129,7 @@ void wifi_init_sta(void)
 	ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler));
 	ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler));
 	vEventGroupDelete(s_wifi_event_group);
+	return rcode;
 }
 
 
@@ -338,10 +341,12 @@ static void client_task(void *pvParameters)
 	int first = 0;
 	int status = 0;
 	int buffer_size = MAX_HTTP_RECV_BUFFER;
+	size_t	data_size;
 
 	while(1) {
 		// read data
-		int read_len = lwip_read(fd, buffer, buffer_size);
+		int read_len = read(fd, buffer, buffer_size);
+		//int read_len = lwip_read(fd, buffer, buffer_size);
 		//int read_len = lwip_read(fd, buffer, MAX_HTTP_RECV_BUFFER);
 		if (read_len < 0) {
 			// I don't know why it is disconnected from the server.
@@ -377,19 +382,24 @@ Access-Control-Allow-Methods: GET, OPTIONS, HEAD
 Connection: Close
 Expires: Mon, 26 Jul 1997 05:00:00 GMT
 #endif
+
+		
 		if (status == 0) {
 			int post = searchString(&first, buffer, "\r\n\r\n");
 			ESP_LOGI(pcTaskGetTaskName(0), "post=%d", post);
 			if (post == 0) { // all data is header
 				ESP_LOGI(pcTaskGetTaskName(0), "xRingbuffer1 Send=%d", read_len);
 				xRingbufferSend(xRingbuffer1, buffer, read_len, 0);
+				data_size = 0;
 			} else { // detecte end of header
 				status++;
 				ESP_LOGI(pcTaskGetTaskName(0), "xRingbuffer1 Send=%d", post);
 				xRingbufferSend(xRingbuffer1, buffer, post, 0);
-				//The rest of the data must be stremed but omitted.
+				data_size = read_len - post;
 			}
 		} else {
+			data_size = read_len;
+		}
 #if 0
 ToDo: 
 Retrieve metadata embedded in data.
@@ -398,15 +408,14 @@ actual text metadata format:
 StreamTitle='Buscemi - First Flight To London';StreamUrl='http://SomaFM.com/secretagent/';
 #endif
 
-			// Adjust the receive buffer size according to the free size of xRingbuffer.
-			xRingbufferSend(xRingbuffer2, buffer, read_len, 0);
-			size_t free_size = xRingbufferGetCurFreeSize(xRingbuffer2);
-			ESP_LOGD(pcTaskGetTaskName(0), "free_size=%d buffer_size=%d", free_size, buffer_size);
-			buffer_size = MIN_HTTP_RECV_BUFFER;
-			if (free_size > MAX_HTTP_RECV_BUFFER*2) buffer_size = MAX_HTTP_RECV_BUFFER;
-			// Required for other tasks to work.
-			vTaskDelay(1);
-		}
+		// Adjust the receive buffer size according to the free size of xRingbuffer.
+		if (data_size) xRingbufferSend(xRingbuffer2, buffer, data_size, 0);
+		size_t free_size = xRingbufferGetCurFreeSize(xRingbuffer2);
+		ESP_LOGD(pcTaskGetTaskName(0), "free_size=%d buffer_size=%d", free_size, buffer_size);
+		buffer_size = MIN_HTTP_RECV_BUFFER;
+		if (free_size > MAX_HTTP_RECV_BUFFER*2) buffer_size = MAX_HTTP_RECV_BUFFER;
+		// Required for other tasks to work.
+		vTaskDelay(1);
 	}
 
 	free(buffer);
@@ -420,7 +429,7 @@ StreamTitle='Buscemi - First Flight To London';StreamUrl='http://SomaFM.com/secr
 
 void app_main(void)
 {
-	//Initialize NVS
+	// Initialize NVS
 	esp_err_t ret = nvs_flash_init();
 	if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
 	  ESP_ERROR_CHECK(nvs_flash_erase());
@@ -428,8 +437,12 @@ void app_main(void)
 	}
 	ESP_ERROR_CHECK(ret);
 
+	// Connect wifi
 	ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-	wifi_init_sta();
+	ret = wifi_init_sta();
+	if (ret != ESP_OK) {
+		while(1) vTaskDelay(10);
+	}
 
 	// Create No Split Ring Buffer 
 	// One write consumes 8 bytes of header area.

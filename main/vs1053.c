@@ -173,8 +173,10 @@ void spi_master_init(VS1053_t * dev, int16_t GPIO_CS, int16_t GPIO_DCS, int16_t 
 		delay(10);
 		await_data_request(dev);
 		dev->endFillByte = wram_read(dev, 0x1E06) & 0xFF;
-		ESP_LOGI(TAG, "endFillByte is %X", dev->endFillByte);
+		ESP_LOGI(TAG, "endFillByte=%x", dev->endFillByte);
 		printDetails(dev, "After last clocksetting") ;
+		dev->chipVersion = getHardwareVersion(dev);
+		ESP_LOGI(TAG, "chipVersion=%x", dev->chipVersion);
 		delay(100);
 	}
 
@@ -562,3 +564,9 @@ void clearDecodedTime(VS1053_t * dev) {
 	write_register(dev, SCI_DECODE_TIME, 0x00);
 	write_register(dev, SCI_DECODE_TIME, 0x00);
 } 
+
+uint8_t getHardwareVersion(VS1053_t * dev) {
+	uint16_t status = read_register(dev, SCI_STATUS);
+
+	return (status>>4)&0xf;
+}
