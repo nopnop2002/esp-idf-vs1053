@@ -220,29 +220,29 @@ static void vs1053_task(void *pvParameters)
 }
 
 int searchString(int * first, char * buf, char * target) {
-		//static bool first = true;
-		static char pdata[MAX_HTTP_RECV_BUFFER*2+1];
-		static int prevl;
-		char* t1;
-		if (*first == 0) {
-				strcpy(pdata, buf);
-				prevl=strlen(buf);
-				*first=1;
-				return 0;
+	//static bool first = true;
+	static char pdata[MAX_HTTP_RECV_BUFFER*2+1];
+	static int prevl;
+	char* t1;
+	if (*first == 0) {
+		strcpy(pdata, buf);
+		prevl=strlen(buf);
+		*first=1;
+		return 0;
+	} else {
+		strcat(pdata,buf);
+		t1 = strstr(pdata, target); // Found target
+		if (t1 == NULL) {
+			strcpy(pdata,buf);
+			prevl=strlen(buf);
+			return 0;
 		} else {
-				strcat(pdata,buf);
-				t1 = strstr(pdata, target); // Found target
-				if (t1 == NULL) {
-						strcpy(pdata,buf);
-						prevl=strlen(buf);
-						return 0;
-				} else {
-						ESP_LOGD(TAG, "pdata=%p",pdata);
-						ESP_LOGD(TAG, "t1	=%p",t1);
-						int ret = t1 - pdata;
-						return (ret - prevl + strlen(target));
-				}
+			ESP_LOGD(TAG, "pdata=%p",pdata);
+			ESP_LOGD(TAG, "t1	=%p",t1);
+			int ret = t1 - pdata;
+			return (ret - prevl + strlen(target));
 		}
+	}
 }
 
 #define SERVER_HOST	   CONFIG_SERVER_HOST
@@ -261,10 +261,10 @@ static void client_task(void *pvParameters)
 {
 	ESP_LOGI(pcTaskGetTaskName(0), "Start");
 	xEventGroupWaitBits( xEventGroup,
-			HTTP_RESUME_BIT,/* The bits within the event group to wait for. */
-			pdTRUE,			/* HTTP_RESUME_BIT should be cleared before returning. */
-			pdFALSE,		/* Don't wait for both bits, either bit will do. */
-			portMAX_DELAY);	/* Wait forever. */
+			HTTP_RESUME_BIT,	/* The bits within the event group to wait for. */
+			pdTRUE,				/* HTTP_RESUME_BIT should be cleared before returning. */
+			pdFALSE,			/* Don't wait for both bits, either bit will do. */
+			portMAX_DELAY);		/* Wait forever. */
 	ESP_LOGI(pcTaskGetTaskName(0), "HTTP_RESUME_BIT");
 
 	// set up address to connect to
@@ -464,10 +464,10 @@ void app_main(void)
 	// Restart client task, if it stop.
 	while(1) {
 		xEventGroupWaitBits( xEventGroup,
-			HTTP_CLOSE_BIT,	/* The bits within the event group to wait for. */
-			pdTRUE,			/* HTTP_CLOSE_BIT should be cleared before returning. */
-			pdFALSE,		/* Don't wait for both bits, either bit will do. */
-			portMAX_DELAY);	/* Wait forever. */
+			HTTP_CLOSE_BIT,		/* The bits within the event group to wait for. */
+			pdTRUE,				/* HTTP_CLOSE_BIT should be cleared before returning. */
+			pdFALSE,			/* Don't wait for both bits, either bit will do. */
+			portMAX_DELAY);		/* Wait forever. */
 		ESP_LOGI(TAG, "HTTP_CLOSE_BIT");
 		xTaskCreate(&client_task, "CLIENT", 1024*8, NULL, 3, NULL);
 		xEventGroupSetBits( xEventGroup, HTTP_RESUME_BIT );
