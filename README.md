@@ -44,4 +44,7 @@ make flash
 (*1) External power if no VIN Pin.   
 (*2) You can change any GPIO using menuconfig.   
 
+![vs1053-1](https://user-images.githubusercontent.com/6020549/76676544-0782b700-6608-11ea-8b79-6e77598f7b8e.JPG)
+
+![vs1053-2](https://user-images.githubusercontent.com/6020549/76676546-09e51100-6608-11ea-8a78-104490b97406.JPG)
 
