@@ -33,7 +33,7 @@ make flash
 |:-:|:-:|:-:|
 |5V|--|VIN(*1)|
 |DGND|--|GND|
-|MISI|--|GPIO19|
+|MISO|--|GPIO19|
 |MOSI|--|GPIO23|
 |SCK|--|GPIO18|
 |DREQ|--|GPIO4(*2)|
