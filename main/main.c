@@ -88,6 +88,7 @@ esp_err_t wifi_init_sta(void)
 
 	wifi_init_config_t cfg = WIFI_INIT_CONFIG_DEFAULT();
 	ESP_ERROR_CHECK(esp_wifi_init(&cfg));
+	ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
 
 	ESP_ERROR_CHECK(esp_event_handler_register(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler, NULL));
 	ESP_ERROR_CHECK(esp_event_handler_register(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler, NULL));
@@ -152,7 +153,6 @@ static void console_task(void *pvParameters)
 		if (item != NULL) {
 			ESP_LOGI(pcTaskGetTaskName(0), "xRingbufferReceive item_size=%d", item_size);
 			for (int i = 0; i < item_size; i++) {
-				//printf("%c", item[i]);
 				buffer[i] = item[i];
 				buffer[i+1] = 0;
 			}
@@ -209,6 +209,7 @@ static void vs1053_task(void *pvParameters)
 		} else {
 			//Failed to receive item
 			ESP_LOGW(pcTaskGetTaskName(0), "No receive item");
+			vTaskDelay(1);
 		}
 		//vTaskDelay(10);
 	}
@@ -217,6 +218,215 @@ static void vs1053_task(void *pvParameters)
 	free(buffer);
 	ESP_LOGI(pcTaskGetTaskName(0), "Finish");
 	vTaskDelete(NULL);
+}
+
+typedef struct {
+	size_t headerSize;
+	char   *headerBuffer;
+	size_t icyMetaintSize;
+	char   *icyMetaintBuffer;
+} HEADER_t;
+
+
+uint16_t saveHeader(HEADER_t * header, char * buf, int length) {
+	if (header->headerBuffer == NULL) {
+		header->headerBuffer = malloc(length+1);
+		if (header->headerBuffer== NULL) {
+			ESP_LOGE(TAG, "headerBuffer malloc fail");
+			return 0;
+		}
+		memcpy(header->headerBuffer, buf, length);
+		header->headerSize = length;
+		header->headerBuffer[header->headerSize] = 0;
+	} else {
+		char * tmp;
+		tmp = realloc(header->headerBuffer, header->headerSize+length+1);
+		if (tmp == NULL) {
+			ESP_LOGE(TAG, "headerBuffer realloc fail");
+			return 0;
+		}
+		header->headerBuffer = tmp;
+		memcpy(&header->headerBuffer[header->headerSize], buf, length);
+		header->headerSize = header->headerSize + length;
+		header->headerBuffer[header->headerSize] = 0;
+	}
+	return header->headerSize;
+}
+
+uint16_t getIcyMetaint(HEADER_t * header) {
+	char *sp1 = strstr(header->headerBuffer, "\r\nicy-metaint");
+	//printf("sp1=%p\n",sp1);
+	if (sp1 == NULL) return 0;
+
+	char *sp2 = strstr(sp1+2, "\r\n");
+	//printf("sp2=%p\n",sp2);
+
+	header->icyMetaintSize = sp2-sp1-2;
+	ESP_LOGI(TAG, "getIcyMetaint:icyMetaintSize=%d",header->icyMetaintSize);
+	header->icyMetaintBuffer = malloc(header->icyMetaintSize+1);
+	if (header->icyMetaintBuffer == NULL) {
+		ESP_LOGE(TAG, "icyMetaintBuffer malloc fail");
+		return 0;
+	}
+	strncpy(header->icyMetaintBuffer, sp1+2, header->icyMetaintSize);
+	header->icyMetaintBuffer[header->icyMetaintSize] = 0;
+	ESP_LOGI(TAG, "icyMetaintSize=%d",header->icyMetaintSize);
+	ESP_LOGI(TAG, "icyMetaintBuffer=[%s]",header->icyMetaintBuffer);
+
+	uint16_t rval = 0;
+	char * sp3 = strstr(header->icyMetaintBuffer, ":");
+	if (sp3 != NULL) {
+		rval = strtol(sp3+1, NULL, 10);
+		ESP_LOGI(TAG, "rval=%d",rval);
+	}
+	return rval;
+} 
+
+
+typedef struct {
+	size_t currentSize;				// Total number of stream data
+	size_t metaintSize;				// icyMetaint bytes
+	size_t copySize;				// Number of bytes copied to metadata
+	size_t remainSize;				// Number of bytes copied to remain
+	size_t chunkSize;				// Byte length of metadata
+	size_t streamSize;				// Byte length of stream data
+	bool   internalFlag;			// whether the metadata will continue
+	char   *metadata;				// Buffer of metadata
+	char   *streamdata;				// Buffer of streamdata
+	char   *StreamTitle;
+	char   *StreamUrl;
+} METADATA_t;
+
+void HexDump(char * buff, uint8_t len) {
+	int loop = (len + 9) / 10;
+	uint8_t index = 0;
+	char str[20];
+	printf("\n");
+	for (int i=0;i<loop;i++) {
+		for(int j=0;j<10;j++) {
+			if (index < len) {
+				if (buff[index] < 0x10) printf("0");
+				printf("%x", buff[index]);
+				printf(" ");
+				if (buff[index] >= 0x20 && buff[index] <= 0x7F) {
+					str[j] = buff[index]; 
+				} else {
+					str[j] = 0x20;
+				}
+				str[j+1] = 0;
+				index++;
+			}
+		}
+		printf("\n");
+		printf("%s\n",str);
+		delay(1);
+	}
+}
+
+bool analyzeMetadata(METADATA_t * chunk, char *buf, size_t len) {
+	if (chunk->currentSize + len > chunk->metaintSize) {
+		uint16_t index = chunk->metaintSize - chunk->currentSize;
+		ESP_LOGD(TAG, "index=%d",index);
+		chunk->chunkSize = buf[index] * 16;
+		ESP_LOGD(TAG, "buf[index]=%x chunkSize=%d",buf[index], chunk->chunkSize);
+		chunk->streamSize = index;
+				
+		if ( chunk->metadata == NULL) {
+			chunk->metadata = malloc(chunk->chunkSize+1);
+			if ( chunk->metadata == NULL) {
+				ESP_LOGE(TAG, "malloc fail");
+				return false;
+			}
+			ESP_LOGD(TAG, "malloc ok");
+		} else {
+			char *tmp = realloc( chunk->metadata, chunk->chunkSize+1);
+			if (tmp == NULL) {
+				ESP_LOGE(TAG, "realloc fail");
+				return false;
+			}
+			chunk->metadata = tmp;
+			ESP_LOGD(TAG, "realloc ok");
+		}
+		if (len > index + chunk->chunkSize + 1) {
+			memcpy(chunk->metadata, &buf[index+1], chunk->chunkSize);
+			chunk->metadata[chunk->chunkSize] = 0;
+			chunk->currentSize = len - index - chunk->chunkSize - 1;
+			//chunk->currentSize = len - index;
+			ESP_LOGD(TAG, "len=%d currentSize=%d",len, chunk->currentSize);
+			chunk->internalFlag = false;
+			memcpy(chunk->streamdata, buf, index);
+			memcpy(&chunk->streamdata[index], &buf[index+chunk->chunkSize+1], chunk->currentSize);
+			chunk->streamSize = index + chunk->currentSize;
+			return true;
+		} else {
+			chunk->copySize = len - index  - 1;
+			ESP_LOGD(TAG, "len=%d copySize=%d",len, chunk->copySize);
+			memcpy(chunk->metadata, &buf[index+1], chunk->copySize);
+			chunk->metadata[chunk->copySize] = 0;
+			chunk->remainSize = chunk->chunkSize - chunk->copySize;
+			chunk->currentSize = 0;
+			chunk->internalFlag = true;
+			memcpy(chunk->streamdata, buf, index);
+			chunk->streamSize = index;
+			return false;
+		}
+	} else {
+		if (chunk->internalFlag) {
+			if (len > chunk->remainSize) {
+				ESP_LOGD(TAG, "chunkSize=%d remainSize=%d", chunk->chunkSize, chunk->remainSize);
+				strncat(chunk->metadata, &buf[0], chunk->remainSize);
+				chunk->metadata[chunk->chunkSize] = 0;
+				chunk->internalFlag = false;
+				chunk->currentSize = len - chunk->remainSize;
+				ESP_LOGI(TAG, "currentSize=%d",chunk->currentSize);
+				memcpy(chunk->streamdata, &buf[chunk->remainSize], chunk->currentSize);
+				chunk->streamSize = chunk->currentSize;
+				return true;
+			} else {
+				strncat(chunk->metadata, &buf[0], len);
+				chunk->remainSize = chunk->remainSize - len;
+				chunk->currentSize = 0;
+				chunk->streamSize =  chunk->currentSize;
+				return false;
+			}
+		} else {
+			chunk->currentSize = chunk->currentSize + len;
+			memcpy(chunk->streamdata, buf, len);
+			chunk->streamSize = len;
+			ESP_LOGD(TAG, "metaintSize=%d len=%d currentSize=%d",chunk->metaintSize, len, chunk->currentSize);
+			return false;
+		}
+	}
+} 
+
+uint16_t getStreamTitle(METADATA_t * chunk) {
+	ESP_LOGI(TAG, "getStreamTitle:chunkSize=%d",chunk->chunkSize);
+	char *sp1 = strstr(chunk->metadata, "StreamTitle=");
+	if (sp1 == NULL) return 0;
+	char *sp2 = strstr(sp1, ";");
+	if (sp2 == NULL) return 0;
+	uint16_t len = sp2 - sp1 - 12;
+	ESP_LOGI(TAG, "StreamTitle len=%d",len);
+	chunk->StreamTitle = malloc(len);
+	if (chunk->StreamTitle ==NULL) return 0;
+	strncpy(chunk->StreamTitle, sp1+12,  len);
+	ESP_LOGI(TAG, "StreamTitle=[%s]",chunk->StreamTitle);
+	return len;
+}
+
+uint16_t getStreamUrl(METADATA_t * chunk) {
+	ESP_LOGI(TAG, "getStreamUrl:chunkSize=%d",chunk->chunkSize);
+	char *sp1 = strstr(chunk->metadata, "StreamUrl=");
+	if (sp1 == NULL) return 0;
+	char *sp2 = strstr(sp1, ";");
+	if (sp2 == NULL) return 0;
+	uint16_t len = sp2 - sp1 - 10;
+	ESP_LOGI(TAG, "StreamUrl len=%d",len);
+	chunk->StreamUrl = malloc(len);
+	if (chunk->StreamUrl ==NULL) return 0;
+	strncpy(chunk->StreamUrl, sp1+10,  len);
+	ESP_LOGI(TAG, "StreamUrl=[%s]",chunk->StreamUrl);
+	return len;
 }
 
 int searchString(int * first, char * buf, char * target) {
@@ -322,7 +532,7 @@ static void client_task(void *pvParameters)
 
 	// ToDo:receive icy-metadata
 	// https://stackoverflow.com/questions/44050266/get-info-from-streaming-radio
-	sprintf(buffer, "Icy-MetaData: 0\r\n");
+	sprintf(buffer, "Icy-MetaData: 1\r\n");
 	ret = send(fd, buffer, strlen(buffer), 0);
 	LWIP_ASSERT("ret == strlen(buffer)", ret == strlen(buffer));
 
@@ -340,13 +550,19 @@ static void client_task(void *pvParameters)
 	// main loop
 	int first = 0;
 	int status = 0;
-	int buffer_size = MAX_HTTP_RECV_BUFFER;
-	size_t	data_size;
+	int bufferSize = MAX_HTTP_RECV_BUFFER;
+	size_t	actualDataSize;
+	HEADER_t header;
+	header.headerBuffer = NULL;
+	uint16_t metaint;
+
+	METADATA_t chunk;
+
 
 	while(1) {
 		// read data
-		int read_len = read(fd, buffer, buffer_size);
-		//int read_len = lwip_read(fd, buffer, buffer_size);
+		int read_len = read(fd, buffer, bufferSize);
+		//int read_len = lwip_read(fd, buffer, bufferSize);
 		//int read_len = lwip_read(fd, buffer, MAX_HTTP_RECV_BUFFER);
 		if (read_len < 0) {
 			// I don't know why it is disconnected from the server.
@@ -386,32 +602,62 @@ Expires: Mon, 26 Jul 1997 05:00:00 GMT
 			int post = searchString(&first, buffer, "\r\n\r\n");
 			ESP_LOGI(pcTaskGetTaskName(0), "post=%d", post);
 			if (post == 0) { // all data is header
-				ESP_LOGI(pcTaskGetTaskName(0), "xRingbuffer1 Send=%d", read_len);
-				xRingbufferSend(xRingbuffer1, buffer, read_len, 0);
-				data_size = 0;
+				//ESP_LOGI(pcTaskGetTaskName(0), "xRingbuffer1 Send=%d", read_len);
+				//xRingbufferSend(xRingbuffer1, buffer, read_len, 0);
+				saveHeader(&header, (char *)buffer, read_len);
+				ESP_LOGI(pcTaskGetTaskName(0), "headerBuffer=[%s]",header.headerBuffer);
+				actualDataSize = 0;
 			} else { // detecte end of header
 				status++;
-				ESP_LOGI(pcTaskGetTaskName(0), "xRingbuffer1 Send=%d", post);
-				xRingbufferSend(xRingbuffer1, buffer, post, 0);
-				data_size = read_len - post;
+				//ESP_LOGI(pcTaskGetTaskName(0), "xRingbuffer1 Send=%d", post);
+				//xRingbufferSend(xRingbuffer1, buffer, post, 0);
+				saveHeader(&header, (char *)buffer, post);
+				ESP_LOGI(pcTaskGetTaskName(0), "headerBuffer=[%s]",header.headerBuffer);
+				metaint = getIcyMetaint(&header);
+				ESP_LOGI(pcTaskGetTaskName(0), "metaint=%d", metaint);
+				chunk.currentSize = 0;
+				chunk.metaintSize = metaint;
+				chunk.internalFlag = false;
+				chunk.metadata = NULL;
+				chunk.StreamTitle = NULL;
+				chunk.StreamUrl = NULL;
+				chunk.streamdata = malloc(MAX_HTTP_RECV_BUFFER);
+				if (chunk.streamdata == NULL) {
+					ESP_LOGE(pcTaskGetTaskName(0), "streamdata malloc fail");
+				}
+				actualDataSize = read_len - post;
 			}
 		} else {
-			data_size = read_len;
+			actualDataSize = read_len;
 		}
+
 #if 0
-ToDo: 
 Retrieve metadata embedded in data.
 To do so, it is necessary to parse the HTTP header and extract the icy-metaint.
 actual text metadata format:
 StreamTitle='Buscemi - First Flight To London';StreamUrl='http://SomaFM.com/secretagent/';
 #endif
 
+		int chunkFlag = analyzeMetadata(&chunk, buffer, actualDataSize); 
+		if (chunkFlag) {
+			// In most cases, the metadata chunk size is 0.
+			if (chunk.chunkSize) {
+				ESP_LOGI(pcTaskGetTaskName(0),"chunkSize=%d metadata=[%s]",chunk.chunkSize, chunk.metadata); 
+				xRingbufferSend(xRingbuffer1, chunk.metadata, chunk.chunkSize, 0);
+			}
+			free(chunk.metadata);
+			chunk.metadata = NULL;
+		}
+
+		// Send stream to vs1053.
+		if (chunk.streamSize) xRingbufferSend(xRingbuffer2, chunk.streamdata, chunk.streamSize, 0);
+
 		// Adjust the receive buffer size according to the free size of xRingbuffer.
-		if (data_size) xRingbufferSend(xRingbuffer2, buffer, data_size, 0);
-		size_t free_size = xRingbufferGetCurFreeSize(xRingbuffer2);
-		ESP_LOGD(pcTaskGetTaskName(0), "free_size=%d buffer_size=%d", free_size, buffer_size);
-		buffer_size = MIN_HTTP_RECV_BUFFER;
-		if (free_size > MAX_HTTP_RECV_BUFFER*2) buffer_size = MAX_HTTP_RECV_BUFFER;
+		size_t freeSize = xRingbufferGetCurFreeSize(xRingbuffer2);
+		ESP_LOGD(pcTaskGetTaskName(0), "freeSize=%d bufferSize=%d", freeSize, bufferSize);
+		bufferSize = MIN_HTTP_RECV_BUFFER;
+		if (freeSize > MAX_HTTP_RECV_BUFFER*2) bufferSize = MAX_HTTP_RECV_BUFFER;
+
 		// Required for other tasks to work.
 		vTaskDelay(1);
 	}
@@ -457,7 +703,7 @@ void app_main(void)
 
 	xTaskCreate(&vs1053_task, "VS1053", 1024*8, NULL, 5, NULL);
 	xTaskCreate(&console_task, "CONSOLE", 1024*4, NULL, 3, NULL);
-	xTaskCreate(&client_task, "CLIENT", 1024*8, NULL, 3, NULL);
+	xTaskCreate(&client_task, "CLIENT", 1024*8, NULL, 6, NULL);
 
 	// Restart client task, if it stop.
 	while(1) {
@@ -467,7 +713,7 @@ void app_main(void)
 			pdFALSE,			/* Don't wait for both bits, either bit will do. */
 			portMAX_DELAY);		/* Wait forever. */
 		ESP_LOGI(TAG, "HTTP_CLOSE_BIT");
-		xTaskCreate(&client_task, "CLIENT", 1024*8, NULL, 3, NULL);
+		xTaskCreate(&client_task, "CLIENT", 1024*8, NULL, 6, NULL);
 		xEventGroupSetBits( xEventGroup, HTTP_RESUME_BIT );
 	}
 

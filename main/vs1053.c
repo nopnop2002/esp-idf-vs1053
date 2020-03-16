@@ -174,7 +174,7 @@ void spi_master_init(VS1053_t * dev, int16_t GPIO_CS, int16_t GPIO_DCS, int16_t 
 		await_data_request(dev);
 		dev->endFillByte = wram_read(dev, 0x1E06) & 0xFF;
 		ESP_LOGI(TAG, "endFillByte=%x", dev->endFillByte);
-		printDetails(dev, "After last clocksetting") ;
+		printDetails(dev, "After last clock setting") ;
 		dev->chipVersion = getHardwareVersion(dev);
 		ESP_LOGI(TAG, "chipVersion=%x", dev->chipVersion);
 		delay(100);
