@@ -48,3 +48,108 @@ make flash
 
 ![vs1053-2](https://user-images.githubusercontent.com/6020549/76676546-09e51100-6608-11ea-8a78-104490b97406.JPG)
 
+# About embedded metadata
+SHOUTCast server can put a Metadata Chunk in the middle of StreamData.
+The Metadata Chunk contains song titles and radio station information.
+
+## Request embedded metadata chunk
+Include the following in the HTTP Request.
+```
+Icy-MetaData: 1
+```
+
+## Metadata chunk interval
+The SHOUTcast server will notify the metadata interval below.
+```
+icy-metaint:45000
+```
+This means that embedded metadata is sent from the server every 45000 bytes.
+```
+ --------------------------------------------------------------------------------
+ |<---45000Byte Stream data---><Metadata><---45000Byte Stream data---><Metadata>
+ --------------------------------------------------------------------------------
+```
+
+## Metadata chunk format
+[Here](https://stackoverflow.com/questions/44050266/get-info-from-streaming-radio) is a detailed explanation.
+
+The very first byte of the metadata chunk tells us how long the metadata chunk is.
+However, most are 0.
+0 indicates that the metadata chunk is 0 blocks(=0 byte)
+```
+ --------------------------------------------------------------------------------
+ |<---45000Byte Stream data---><0><---45000Byte Stream data---><0>
+ --------------------------------------------------------------------------------
+```
+
+## Pattern to receive Metadata chunk
+
+- Case1
+All metadata chunks are included in the receive buffer.
+```
+ +------------------------------+
+ |ssss....ssssBmmmm......mmmmsss|
+ +------------------------------+
+  s : Stream data
+  B : Block number of metadata chunks
+  m : Metadata chunk
+```
+
+- Case2
+Only the beginning of the metadata chunk is included in the receive buffer.
+The metadata chunk continues on the next reception.
+```
+ +------------------------------+
+ |ssss.........ssssBmmmm......mm|
+ +------------------------------+
+
+ +------------------------------+
+ |mmmmssss..................ssss|
+ +------------------------------+
+```
+
+- Case3
+Only the beginning of the metadata chunk is included in the receive buffer.
+However, the next receive buffer is only a metadata chunk.
+Occurs when the receive buffer size is small.
+```
+ +------------------------------+
+ |ssss.........ssssBmmmm......mm|
+ +------------------------------+
+
+ +------------------------------+
+ |mmmm......................mmmm|
+ +------------------------------+
+
+ +------------------------------+
+ |mmmmssss..................ssss|
+ +------------------------------+
+```
+
+## Display Metadata
+The detected Metadata is sent to the CONSOLE task via RingBuffer.
+By changing the CONSOLE task, the received Metadata can be displayed on an external monitor.
+These pages will be helpful.
+
+- HD44780(GPIO)
+https://github.com/UncleRus/esp-idf-lib/tree/master/examples/hd44780_gpio
+
+- HD44780(I2C)
+https://github.com/UncleRus/esp-idf-lib/tree/master/examples/hd44780_i2c
+
+- SSD1306
+https://github.com/nopnop2002/esp-idf-ssd1306
+
+- ILI9325/9340/9341
+https://github.com/nopnop2002/esp-idf-ili9340
+
+- ST7735
+https://github.com/nopnop2002/esp-idf-ili9340
+
+- ST7789
+https://github.com/nopnop2002/esp-idf-st7789
+
+- PCD8544
+https://github.com/yanbe/esp32-pcd8544-examples
+
+
