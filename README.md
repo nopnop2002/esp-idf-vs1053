@@ -96,7 +96,7 @@ All metadata chunks are included in the receive buffer.
 ```
 
 - Case2   
-Only the beginning of the metadata chunk is included in the receive buffer.
+Only the beginning of the metadata chunk is included in the receive buffer.   
 The metadata chunk continues on the next reception.
 ```
  +------------------------------+
@@ -108,9 +108,9 @@ The metadata chunk continues on the next reception.
  +------------------------------+
 ```
 
-- Case3
-Only the beginning of the metadata chunk is included in the receive buffer.
-However, the next receive buffer is only a metadata chunk.
+- Case3   
+Only the beginning of the metadata chunk is included in the receive buffer.   
+However, the next receive buffer is only a metadata chunk.   
 Occurs when the receive buffer size is small.
 ```
  +------------------------------+
