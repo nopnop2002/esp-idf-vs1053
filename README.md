@@ -127,8 +127,8 @@ Occurs when the receive buffer size is small.
 ```
 
 ## Display Metadata
-The detected Metadata is sent to the CONSOLE task via RingBuffer.
-By changing the CONSOLE task, the received Metadata can be displayed on an external monitor.
+The detected Metadata is sent to the CONSOLE task via RingBuffer.   
+By changing the CONSOLE task, the received Metadata can be displayed on an external monitor.   
 These pages will be helpful.
 
 - HD44780(GPIO)
