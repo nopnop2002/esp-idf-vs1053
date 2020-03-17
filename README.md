@@ -14,6 +14,7 @@ You have to set this config value with menuconfig.
 - CONFIG_GPIO_DCS   
 - CONFIG_GPIO_DREQ   
 - CONFIG_GPIO_RESET   
+- CONFIG_VOLUME   
 - CONFIG_SERVER_HOST   
 - CONFIG_SERVER_PORT   
 - CONFIG_SERVER_PATH   
