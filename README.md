@@ -84,7 +84,7 @@ However, most are 0.
 
 ## Pattern to receive Metadata chunk
 
-- Case1
+- Case1   
 All metadata chunks are included in the receive buffer.
 ```
  +------------------------------+
@@ -95,7 +95,7 @@ All metadata chunks are included in the receive buffer.
   m : Metadata chunk
 ```
 
-- Case2
+- Case2   
 Only the beginning of the metadata chunk is included in the receive buffer.
 The metadata chunk continues on the next reception.
 ```
