@@ -49,7 +49,7 @@ make flash
 ![vs1053-2](https://user-images.githubusercontent.com/6020549/76676546-09e51100-6608-11ea-8a78-104490b97406.JPG)
 
 # About embedded metadata
-SHOUTCast server can put a Metadata Chunk in the middle of StreamData.
+SHOUTCast server can put a Metadata Chunk in the middle of StreamData.   
 The Metadata Chunk contains song titles and radio station information.
 
 ## Request embedded metadata chunk
@@ -73,8 +73,8 @@ This means that embedded metadata is sent from the server every 45000 bytes.
 ## Metadata chunk format
 [Here](https://stackoverflow.com/questions/44050266/get-info-from-streaming-radio) is a detailed explanation.
 
-The very first byte of the metadata chunk tells us how long the metadata chunk is.
-However, most are 0.
+The very first byte of the metadata chunk tells us how long the metadata chunk is.   
+However, most are 0.   
 0 indicates that the metadata chunk is 0 blocks(=0 byte)
 ```
  --------------------------------------------------------------------------------
