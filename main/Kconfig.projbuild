@@ -55,6 +55,13 @@ menu "Application Configuration"
             Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used to DREQ.
             GPIOs 35-39 are input-only so cannot be used as outputs.
 
+    config VOLUME
+        int "VS1053 Volume"
+        range 50 100
+        default 90
+        help
+            Volume value of VS1053.
+
 	config SERVER_HOST
 		string "Hostname of radio station"
 		default "ice2.somafm.com"

@@ -182,7 +182,9 @@ static void vs1053_task(void *pvParameters)
 	spi_master_init(&dev,CONFIG_GPIO_CS, CONFIG_GPIO_DCS, CONFIG_GPIO_DREQ, CONFIG_GPIO_RESET);
 	ESP_LOGI(pcTaskGetTaskName(0), "spi_master_init done");
 	switchToMp3Mode(&dev);
-	setVolume(&dev, 100);
+	//setVolume(&dev, 100);
+	ESP_LOGI(pcTaskGetTaskName(0), "CONFIG_VOLUME=%d", CONFIG_VOLUME);
+	setVolume(&dev, CONFIG_VOLUME);
 
 	char *buffer = malloc(MAX_HTTP_RECV_BUFFER + 1);
 	if (buffer == NULL) {
@@ -285,7 +287,7 @@ uint16_t getIcyMetaint(HEADER_t * header) {
 
 typedef struct {
 	size_t currentSize;				// Total number of stream data
-	size_t metaintSize;				// icyMetaint bytes
+	size_t metaintSize;				// icy-Metaint bytes
 	size_t copySize;				// Number of bytes copied to metadata
 	size_t remainSize;				// Number of bytes copied to remain
 	size_t chunkSize;				// Byte length of metadata
@@ -378,7 +380,7 @@ bool analyzeMetadata(METADATA_t * chunk, char *buf, size_t len) {
 				chunk->metadata[chunk->chunkSize] = 0;
 				chunk->internalFlag = false;
 				chunk->currentSize = len - chunk->remainSize;
-				ESP_LOGI(TAG, "currentSize=%d",chunk->currentSize);
+				ESP_LOGD(TAG, "currentSize=%d",chunk->currentSize);
 				memcpy(chunk->streamdata, &buf[chunk->remainSize], chunk->currentSize);
 				chunk->streamSize = chunk->currentSize;
 				return true;
@@ -541,11 +543,13 @@ static void client_task(void *pvParameters)
 	ret = send(fd, buffer, strlen(buffer), 0);
 	LWIP_ASSERT("ret == strlen(buffer)", ret == strlen(buffer));
 
+#if 0
 	// set timeout
 	struct timeval timeout;
 	timeout.tv_usec = 0;
 	timeout.tv_sec = 3;
 	setsockopt (fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
+#endif
 
 	// main loop
 	int first = 0;
@@ -567,6 +571,7 @@ static void client_task(void *pvParameters)
 		if (read_len < 0) {
 			// I don't know why it is disconnected from the server.
 			ESP_LOGW(pcTaskGetTaskName(0), "read_len = %d", read_len);
+			ESP_LOGW(pcTaskGetTaskName(0), "errno = %d", errno);
 			break;
 		}
 		if (read_len == 0) continue;
@@ -638,7 +643,7 @@ actual text metadata format:
 StreamTitle='Buscemi - First Flight To London';StreamUrl='http://SomaFM.com/secretagent/';
 #endif
 
-		int chunkFlag = analyzeMetadata(&chunk, buffer, actualDataSize); 
+		bool chunkFlag = analyzeMetadata(&chunk, buffer, actualDataSize); 
 		if (chunkFlag) {
 			// In most cases, the metadata chunk size is 0.
 			if (chunk.chunkSize) {
