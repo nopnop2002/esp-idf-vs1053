@@ -284,6 +284,44 @@ uint16_t getIcyMetaint(HEADER_t * header) {
 	return rval;
 } 
 
+uint16_t readHeader(int fd, HEADER_t * header) {
+	header->headerSize = 0;
+	header->headerBuffer = NULL;
+	int index = 0;
+	char buffer[128];
+	int flag = 0;
+
+	while(1) {
+		// read data
+		int read_len = read(fd, &buffer[index], 1);
+		if (read_len == 0) continue;
+		if (read_len < 0) {
+			ESP_LOGW(pcTaskGetTaskName(0), "read_len = %d", read_len);
+			ESP_LOGW(pcTaskGetTaskName(0), "errno = %d", errno);
+			break;
+		}
+		
+		if (buffer[index] == 0x0D) {
+			flag++;
+		} else if (buffer[index] == 0x0A) {
+			flag++;
+		} else {
+			flag = 0;
+		}
+
+		index++;
+		if (flag == 4) {
+			saveHeader(header, buffer, index);
+			break;
+		}
+		if (index == 128) {
+			saveHeader(header, buffer, index);
+			index = 0;
+		}
+	}
+	return header->headerSize;
+}
+
 
 typedef struct {
 	size_t currentSize;				// Total number of stream data
@@ -431,32 +469,6 @@ uint16_t getStreamUrl(METADATA_t * chunk) {
 	return len;
 }
 
-int searchString(int * first, char * buf, char * target) {
-	//static bool first = true;
-	static char pdata[MAX_HTTP_RECV_BUFFER*2+1];
-	static int prevl;
-	char* t1;
-	if (*first == 0) {
-		strcpy(pdata, buf);
-		prevl=strlen(buf);
-		*first=1;
-		return 0;
-	} else {
-		strcat(pdata,buf);
-		t1 = strstr(pdata, target); // Found target
-		if (t1 == NULL) {
-			strcpy(pdata,buf);
-			prevl=strlen(buf);
-			return 0;
-		} else {
-			ESP_LOGD(TAG, "pdata=%p",pdata);
-			ESP_LOGD(TAG, "t1	=%p",t1);
-			int ret = t1 - pdata;
-			return (ret - prevl + strlen(target));
-		}
-	}
-}
-
 #define SERVER_HOST	   CONFIG_SERVER_HOST
 #define SERVER_PORT	   CONFIG_SERVER_PORT
 #define SERVER_PATH	   CONFIG_SERVER_PATH
@@ -551,17 +563,52 @@ static void client_task(void *pvParameters)
 	setsockopt (fd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout));
 #endif
 
-	// main loop
-	int first = 0;
-	int status = 0;
-	int bufferSize = MAX_HTTP_RECV_BUFFER;
-	size_t	actualDataSize;
+	// read HTTP header
+	// SHOUTcast server does not return header length.
+	// Therefore, it is necessary to find the end of the header.
 	HEADER_t header;
-	header.headerBuffer = NULL;
-	uint16_t metaint;
+	readHeader(fd, &header);
+	ESP_LOGI(pcTaskGetTaskName(0), "headerBuffer=[%s]",header.headerBuffer);
+	ESP_LOGI(pcTaskGetTaskName(0), "headerSize=%d",header.headerSize);
+
+#if 0
+HTTP/1.0 200 OK
+Content-Type: audio/mpeg
+Date: Wed, 18 Mar 2020 11:45:45 GMT
+icy-br:128
+icy-genre:Mellow 70s
+icy-name:Left Coast 70s: Mellow album rock from the Seventies. Yacht friendly. [SomaFM]
+icy-notice1:<BR>This stream requires <a href="http://www.winamp.com/">Winamp</a><BR>
+icy-notice2:SHOUTcast Distributed Network Audio Server/Linux v1.9.5<BR>
+icy-pub:0
+icy-url:http://somafm.com
+Server: Icecast 2.4.0-kh10
+Cache-Control: no-cache, no-store
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Headers: Origin, Accept, X-Requested-With, Content-Type
+Access-Control-Allow-Methods: GET, OPTIONS, HEAD
+Connection: Close
+Expires: Mon, 26 Jul 1997 05:00:00 GMT
+icy-metaint:16000
+#endif
+
+	uint16_t metaint = getIcyMetaint(&header);
+	ESP_LOGI(pcTaskGetTaskName(0), "metaint=%d", metaint);
 
 	METADATA_t chunk;
+	chunk.currentSize = 0;
+	chunk.metaintSize = metaint;
+	chunk.internalFlag = false;
+	chunk.metadata = NULL;
+	chunk.StreamTitle = NULL;
+	chunk.StreamUrl = NULL;
+	chunk.streamdata = malloc(MAX_HTTP_RECV_BUFFER);
+	if (chunk.streamdata == NULL) {
+		ESP_LOGE(pcTaskGetTaskName(0), "streamdata malloc fail");
+	}
 
+	// main loop
+	int bufferSize = MAX_HTTP_RECV_BUFFER;
 
 	while(1) {
 		// read data
@@ -578,63 +625,6 @@ static void client_task(void *pvParameters)
 
 		buffer[read_len] = 0;
 		ESP_LOGD(pcTaskGetTaskName(0), "read_len = %d", read_len);
-	
-		// skip HTTP header
-		// SHOUTcast server does not return header length.
-		// Therefore, it is necessary to find the end of the header.
-#if 0
-HTTP/1.1 200 OK
-Content-Type: audio/mpeg
-Date: Thu, 12 Mar 2020 13:33:42 GMT
-icy-br:128
-icy-genre:Mellow 70s
-icy-name:Left Coast 70s: Mellow album rock from the Seventies. Yacht friendly. [SomaFM]
-icy-notice1:<BR>This stream requires <a href="http://www.winamp.com/">Winamp</a><BR>
-icy-notice2:SHOUTcast Distributed Network Audio Server/Linux v1.9.5<BR>
-icy-pub:0
-icy-url:http://somafm.com
-Server: Icecast 2.4.0-kh10
-Cache-Control: no-cache, no-store
-Access-Control-Allow-Origin: *
-Access-Control-Allow-Headers: Origin, Accept, X-Requested-With, Content-Type
-Access-Control-Allow-Methods: GET, OPTIONS, HEAD
-Connection: Close
-Expires: Mon, 26 Jul 1997 05:00:00 GMT
-#endif
-
-		
-		if (status == 0) {
-			int post = searchString(&first, buffer, "\r\n\r\n");
-			ESP_LOGI(pcTaskGetTaskName(0), "post=%d", post);
-			if (post == 0) { // all data is header
-				//ESP_LOGI(pcTaskGetTaskName(0), "xRingbuffer1 Send=%d", read_len);
-				//xRingbufferSend(xRingbuffer1, buffer, read_len, 0);
-				saveHeader(&header, (char *)buffer, read_len);
-				ESP_LOGI(pcTaskGetTaskName(0), "headerBuffer=[%s]",header.headerBuffer);
-				actualDataSize = 0;
-			} else { // detecte end of header
-				status++;
-				//ESP_LOGI(pcTaskGetTaskName(0), "xRingbuffer1 Send=%d", post);
-				//xRingbufferSend(xRingbuffer1, buffer, post, 0);
-				saveHeader(&header, (char *)buffer, post);
-				ESP_LOGI(pcTaskGetTaskName(0), "headerBuffer=[%s]",header.headerBuffer);
-				metaint = getIcyMetaint(&header);
-				ESP_LOGI(pcTaskGetTaskName(0), "metaint=%d", metaint);
-				chunk.currentSize = 0;
-				chunk.metaintSize = metaint;
-				chunk.internalFlag = false;
-				chunk.metadata = NULL;
-				chunk.StreamTitle = NULL;
-				chunk.StreamUrl = NULL;
-				chunk.streamdata = malloc(MAX_HTTP_RECV_BUFFER);
-				if (chunk.streamdata == NULL) {
-					ESP_LOGE(pcTaskGetTaskName(0), "streamdata malloc fail");
-				}
-				actualDataSize = read_len - post;
-			}
-		} else {
-			actualDataSize = read_len;
-		}
 
 #if 0
 Retrieve metadata embedded in data.
@@ -643,7 +633,7 @@ actual text metadata format:
 StreamTitle='Buscemi - First Flight To London';StreamUrl='http://SomaFM.com/secretagent/';
 #endif
 
-		bool chunkFlag = analyzeMetadata(&chunk, buffer, actualDataSize); 
+		bool chunkFlag = analyzeMetadata(&chunk, buffer, read_len); 
 		if (chunkFlag) {
 			// In most cases, the metadata chunk size is 0.
 			if (chunk.chunkSize) {
