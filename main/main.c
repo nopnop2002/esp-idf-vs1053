@@ -326,16 +326,82 @@ uint16_t readHeader(int fd, HEADER_t * header) {
 typedef struct {
 	size_t currentSize;				// Total number of stream data
 	size_t metaintSize;				// icy-Metaint bytes
-	size_t copySize;				// Number of bytes copied to metadata
-	size_t remainSize;				// Number of bytes copied to remain
-	size_t chunkSize;				// Byte length of metadata
-	size_t streamSize;				// Byte length of stream data
-	bool   internalFlag;			// whether the metadata will continue
+	size_t ringbufferSize;
+	size_t metadataSize;
 	char   *metadata;				// Buffer of metadata
+	size_t streamdataSize;			// Byte length of stream data
 	char   *streamdata;				// Buffer of streamdata
 	char   *StreamTitle;
 	char   *StreamUrl;
 } METADATA_t;
+
+#define	METADATA	100
+#define	STREAMDATA	200
+#define	READFAIL	900
+#define	MALLOCFAIL	910
+
+int readStremDataWithMetadata(int fd, METADATA_t * hoge) {
+	char buffer[1];
+	while(1) {
+		int read_len = read(fd, buffer, 1);
+		if (read_len < 0) {
+			// I don't know why it is disconnected from the server.
+			ESP_LOGW(pcTaskGetTaskName(0), "read_len = %d", read_len);
+			ESP_LOGW(pcTaskGetTaskName(0), "errno = %d", errno);
+			return READFAIL;
+		}
+
+		if (hoge->metaintSize == 0) {
+			hoge->streamdata[hoge->streamdataSize] = buffer[0];
+			hoge->streamdataSize++;
+			if (hoge->streamdataSize == hoge->ringbufferSize) return STREAMDATA;
+
+		} else {
+			if (hoge->currentSize == hoge->metaintSize) {
+				hoge->currentSize = 0;
+				hoge->metadataSize = buffer[0] * 16;
+				ESP_LOGI(TAG, "buffer=%x metadataSize=%d",buffer[0], hoge->metadataSize);
+				if (hoge->metadataSize == 0) continue;
+
+				if (hoge->metadata == NULL) {
+					hoge->metadata = malloc(hoge->metadataSize+1);
+					if (hoge->metadata == NULL) {
+						ESP_LOGE(TAG, "malloc fail");
+						return MALLOCFAIL;
+					}
+				} else {
+					char *tmp = realloc( hoge->metadata, hoge->metadataSize+1);
+					if (tmp == NULL) {
+						ESP_LOGE(TAG, "realloc fail");
+						return MALLOCFAIL;
+					}
+					hoge->metadata = tmp;
+				}
+
+				for (int i=0; i<hoge->metadataSize; i++) {
+					int read_len = read(fd, buffer, 1);
+					if (read_len < 0) {
+						// I don't know why it is disconnected from the server.
+						ESP_LOGW(pcTaskGetTaskName(0), "read_len = %d", read_len);
+						ESP_LOGW(pcTaskGetTaskName(0), "errno = %d", errno);
+						return READFAIL;
+					}
+					hoge->metadata[i] = buffer[0];
+					hoge->metadata[i+1] = 0;
+				}
+				return METADATA;
+
+			} else {
+				hoge->streamdata[hoge->streamdataSize] = buffer[0];
+				hoge->streamdataSize++;
+				hoge->currentSize++;
+				if (hoge->streamdataSize == hoge->ringbufferSize) return STREAMDATA;
+			}
+
+		}
+	} // end while
+}
+
 
 void HexDump(char * buff, uint8_t len) {
 	int loop = (len + 9) / 10;
@@ -363,109 +429,34 @@ void HexDump(char * buff, uint8_t len) {
 	}
 }
 
-bool analyzeMetadata(METADATA_t * chunk, char *buf, size_t len) {
-	if (chunk->currentSize + len > chunk->metaintSize) {
-		uint16_t index = chunk->metaintSize - chunk->currentSize;
-		ESP_LOGD(TAG, "index=%d",index);
-		chunk->chunkSize = buf[index] * 16;
-		ESP_LOGD(TAG, "buf[index]=%x chunkSize=%d",buf[index], chunk->chunkSize);
-		chunk->streamSize = index;
-				
-		if ( chunk->metadata == NULL) {
-			chunk->metadata = malloc(chunk->chunkSize+1);
-			if ( chunk->metadata == NULL) {
-				ESP_LOGE(TAG, "malloc fail");
-				return false;
-			}
-			ESP_LOGD(TAG, "malloc ok");
-		} else {
-			char *tmp = realloc( chunk->metadata, chunk->chunkSize+1);
-			if (tmp == NULL) {
-				ESP_LOGE(TAG, "realloc fail");
-				return false;
-			}
-			chunk->metadata = tmp;
-			ESP_LOGD(TAG, "realloc ok");
-		}
-		if (len > index + chunk->chunkSize + 1) {
-			memcpy(chunk->metadata, &buf[index+1], chunk->chunkSize);
-			chunk->metadata[chunk->chunkSize] = 0;
-			chunk->currentSize = len - index - chunk->chunkSize - 1;
-			//chunk->currentSize = len - index;
-			ESP_LOGD(TAG, "len=%d currentSize=%d",len, chunk->currentSize);
-			chunk->internalFlag = false;
-			memcpy(chunk->streamdata, buf, index);
-			memcpy(&chunk->streamdata[index], &buf[index+chunk->chunkSize+1], chunk->currentSize);
-			chunk->streamSize = index + chunk->currentSize;
-			return true;
-		} else {
-			chunk->copySize = len - index  - 1;
-			ESP_LOGD(TAG, "len=%d copySize=%d",len, chunk->copySize);
-			memcpy(chunk->metadata, &buf[index+1], chunk->copySize);
-			chunk->metadata[chunk->copySize] = 0;
-			chunk->remainSize = chunk->chunkSize - chunk->copySize;
-			chunk->currentSize = 0;
-			chunk->internalFlag = true;
-			memcpy(chunk->streamdata, buf, index);
-			chunk->streamSize = index;
-			return false;
-		}
-	} else {
-		if (chunk->internalFlag) {
-			if (len > chunk->remainSize) {
-				ESP_LOGD(TAG, "chunkSize=%d remainSize=%d", chunk->chunkSize, chunk->remainSize);
-				strncat(chunk->metadata, &buf[0], chunk->remainSize);
-				chunk->metadata[chunk->chunkSize] = 0;
-				chunk->internalFlag = false;
-				chunk->currentSize = len - chunk->remainSize;
-				ESP_LOGD(TAG, "currentSize=%d",chunk->currentSize);
-				memcpy(chunk->streamdata, &buf[chunk->remainSize], chunk->currentSize);
-				chunk->streamSize = chunk->currentSize;
-				return true;
-			} else {
-				strncat(chunk->metadata, &buf[0], len);
-				chunk->remainSize = chunk->remainSize - len;
-				chunk->currentSize = 0;
-				chunk->streamSize =  chunk->currentSize;
-				return false;
-			}
-		} else {
-			chunk->currentSize = chunk->currentSize + len;
-			memcpy(chunk->streamdata, buf, len);
-			chunk->streamSize = len;
-			ESP_LOGD(TAG, "metaintSize=%d len=%d currentSize=%d",chunk->metaintSize, len, chunk->currentSize);
-			return false;
-		}
-	}
-} 
 
-uint16_t getStreamTitle(METADATA_t * chunk) {
-	ESP_LOGI(TAG, "getStreamTitle:chunkSize=%d",chunk->chunkSize);
-	char *sp1 = strstr(chunk->metadata, "StreamTitle=");
+uint16_t getStreamTitle(METADATA_t * hoge) {
+	ESP_LOGI(TAG, "getStreamTitle:metadataSize=%d",hoge->metadataSize);
+	char *sp1 = strstr(hoge->metadata, "StreamTitle=");
 	if (sp1 == NULL) return 0;
 	char *sp2 = strstr(sp1, ";");
 	if (sp2 == NULL) return 0;
 	uint16_t len = sp2 - sp1 - 12;
 	ESP_LOGI(TAG, "StreamTitle len=%d",len);
-	chunk->StreamTitle = malloc(len);
-	if (chunk->StreamTitle ==NULL) return 0;
-	strncpy(chunk->StreamTitle, sp1+12,  len);
-	ESP_LOGI(TAG, "StreamTitle=[%s]",chunk->StreamTitle);
+	hoge->StreamTitle = malloc(len);
+	if (hoge->StreamTitle ==NULL) return 0;
+	strncpy(hoge->StreamTitle, sp1+12,  len);
+	ESP_LOGI(TAG, "StreamTitle=[%s]",hoge->StreamTitle);
 	return len;
 }
 
-uint16_t getStreamUrl(METADATA_t * chunk) {
-	ESP_LOGI(TAG, "getStreamUrl:chunkSize=%d",chunk->chunkSize);
-	char *sp1 = strstr(chunk->metadata, "StreamUrl=");
+uint16_t getStreamUrl(METADATA_t * hoge) {
+	ESP_LOGI(TAG, "getStreamUrl:metadataSize=%d",hoge->metadataSize);
+	char *sp1 = strstr(hoge->metadata, "StreamUrl=");
 	if (sp1 == NULL) return 0;
 	char *sp2 = strstr(sp1, ";");
 	if (sp2 == NULL) return 0;
 	uint16_t len = sp2 - sp1 - 10;
 	ESP_LOGI(TAG, "StreamUrl len=%d",len);
-	chunk->StreamUrl = malloc(len);
-	if (chunk->StreamUrl ==NULL) return 0;
-	strncpy(chunk->StreamUrl, sp1+10,  len);
-	ESP_LOGI(TAG, "StreamUrl=[%s]",chunk->StreamUrl);
+	hoge->StreamUrl = malloc(len);
+	if (hoge->StreamUrl ==NULL) return 0;
+	strncpy(hoge->StreamUrl, sp1+10,  len);
+	ESP_LOGI(TAG, "StreamUrl=[%s]",hoge->StreamUrl);
 	return len;
 }
 
@@ -533,6 +524,7 @@ static void client_task(void *pvParameters)
 
 	// send request
 	sprintf(buffer, "GET %s HTTP/1.1\r\n", SERVER_PATH);
+	//sprintf(buffer, "GET %s HTTP/1.0\r\n", SERVER_PATH);
 	ret = send(fd, buffer, strlen(buffer), 0);
 	LWIP_ASSERT("ret == strlen(buffer)", ret == strlen(buffer));
 
@@ -544,16 +536,22 @@ static void client_task(void *pvParameters)
 	ret = send(fd, buffer, strlen(buffer), 0);
 	LWIP_ASSERT("ret == strlen(buffer)", ret == strlen(buffer));
 
-	// ToDo:receive icy-metadata
+	// receive icy-metadata
 	// https://stackoverflow.com/questions/44050266/get-info-from-streaming-radio
 	sprintf(buffer, "Icy-MetaData: 1\r\n");
+	//sprintf(buffer, "Icy-MetaData: 0\r\n");
+	ret = send(fd, buffer, strlen(buffer), 0);
+	LWIP_ASSERT("ret == strlen(buffer)", ret == strlen(buffer));
+
+	sprintf(buffer, "Connection: close\r\n");
 	ret = send(fd, buffer, strlen(buffer), 0);
 	LWIP_ASSERT("ret == strlen(buffer)", ret == strlen(buffer));
 
 	sprintf(buffer, "\r\n");
-	//ret = lwip_write(fd, buffer, strlen(buffer));
 	ret = send(fd, buffer, strlen(buffer), 0);
 	LWIP_ASSERT("ret == strlen(buffer)", ret == strlen(buffer));
+
+	free(buffer);
 
 #if 0
 	// set timeout
@@ -595,69 +593,55 @@ icy-metaint:16000
 	uint16_t metaint = getIcyMetaint(&header);
 	ESP_LOGI(pcTaskGetTaskName(0), "metaint=%d", metaint);
 
-	METADATA_t chunk;
-	chunk.currentSize = 0;
-	chunk.metaintSize = metaint;
-	chunk.internalFlag = false;
-	chunk.metadata = NULL;
-	chunk.StreamTitle = NULL;
-	chunk.StreamUrl = NULL;
-	chunk.streamdata = malloc(MAX_HTTP_RECV_BUFFER);
-	if (chunk.streamdata == NULL) {
+	METADATA_t meta;
+	meta.currentSize = 0;
+	meta.metaintSize = metaint;
+	meta.ringbufferSize = MAX_HTTP_RECV_BUFFER;
+	meta.metadataSize = 0;
+	meta.metadata = NULL;
+	meta.streamdataSize = 0;
+	meta.streamdata = malloc(MAX_HTTP_RECV_BUFFER);
+	meta.StreamTitle = NULL;
+	meta.StreamUrl = NULL;
+	if (meta.streamdata == NULL) {
 		ESP_LOGE(pcTaskGetTaskName(0), "streamdata malloc fail");
 	}
 
 	// main loop
-	int bufferSize = MAX_HTTP_RECV_BUFFER;
-
 	while(1) {
-		// read data
-		int read_len = read(fd, buffer, bufferSize);
-		//int read_len = lwip_read(fd, buffer, bufferSize);
-		//int read_len = lwip_read(fd, buffer, MAX_HTTP_RECV_BUFFER);
-		if (read_len < 0) {
-			// I don't know why it is disconnected from the server.
-			ESP_LOGW(pcTaskGetTaskName(0), "read_len = %d", read_len);
-			ESP_LOGW(pcTaskGetTaskName(0), "errno = %d", errno);
-			break;
+		int type = readStremDataWithMetadata(fd, &meta);
+		if (type == READFAIL) break;
+		if (type == MALLOCFAIL) break;
+
+		if (type == METADATA) {
+			ESP_LOGI(pcTaskGetTaskName(0),"metadataSize=%d metadata=[%s]",meta.metadataSize, meta.metadata); 
+			xRingbufferSend(xRingbuffer1, meta.metadata, meta.metadataSize, 0);
 		}
-		if (read_len == 0) continue;
 
-		buffer[read_len] = 0;
-		ESP_LOGD(pcTaskGetTaskName(0), "read_len = %d", read_len);
+		if (type == STREAMDATA) {
+			ESP_LOGD(pcTaskGetTaskName(0),"streamdataSize=%d ringbufferSize=%d",meta.streamdataSize, meta.ringbufferSize);
+			xRingbufferSend(xRingbuffer2, meta.streamdata, meta.streamdataSize, 0);
+			meta.streamdataSize = 0;
 
-#if 0
-Retrieve metadata embedded in data.
-To do so, it is necessary to parse the HTTP header and extract the icy-metaint.
-actual text metadata format:
-StreamTitle='Buscemi - First Flight To London';StreamUrl='http://SomaFM.com/secretagent/';
-#endif
-
-		bool chunkFlag = analyzeMetadata(&chunk, buffer, read_len); 
-		if (chunkFlag) {
-			// In most cases, the metadata chunk size is 0.
-			if (chunk.chunkSize) {
-				ESP_LOGI(pcTaskGetTaskName(0),"chunkSize=%d metadata=[%s]",chunk.chunkSize, chunk.metadata); 
-				xRingbufferSend(xRingbuffer1, chunk.metadata, chunk.chunkSize, 0);
+			// Adjust the buffer size according to the free size of xRingbuffer.
+			size_t freeSize = xRingbufferGetCurFreeSize(xRingbuffer2);
+			meta.ringbufferSize = MAX_HTTP_RECV_BUFFER;
+			if (freeSize < MAX_HTTP_RECV_BUFFER*2) {
+				meta.ringbufferSize = MIN_HTTP_RECV_BUFFER;
+				vTaskDelay(1);
 			}
-			free(chunk.metadata);
-			chunk.metadata = NULL;
+#if 0
+			meta.ringbufferSize = MIN_HTTP_RECV_BUFFER;
+			if (freeSize > MAX_HTTP_RECV_BUFFER*2) meta.ringbufferSize = MAX_HTTP_RECV_BUFFER;
+#endif
+			ESP_LOGD(pcTaskGetTaskName(0), "freeSize=%d ringbufferSize=%d", freeSize, meta.ringbufferSize);
 		}
-
-		// Send stream to vs1053.
-		if (chunk.streamSize) xRingbufferSend(xRingbuffer2, chunk.streamdata, chunk.streamSize, 0);
-
-		// Adjust the receive buffer size according to the free size of xRingbuffer.
-		size_t freeSize = xRingbufferGetCurFreeSize(xRingbuffer2);
-		ESP_LOGD(pcTaskGetTaskName(0), "freeSize=%d bufferSize=%d", freeSize, bufferSize);
-		bufferSize = MIN_HTTP_RECV_BUFFER;
-		if (freeSize > MAX_HTTP_RECV_BUFFER*2) bufferSize = MAX_HTTP_RECV_BUFFER;
-
-		// Required for other tasks to work.
-		vTaskDelay(1);
 	}
 
-	free(buffer);
+	// release memory
+	free(meta.streamdata);
+	if (meta.metadata) free(meta.metadata);
+
 	// close socket
 	ret = close(fd);
 	LWIP_ASSERT("ret == 0", ret == 0);
@@ -684,11 +668,11 @@ void app_main(void)
 	}
 
 	// Create No Split Ring Buffer 
-	// One write consumes 8 bytes of header area.
-	xRingbuffer1 = xRingbufferCreate((MAX_HTTP_RECV_BUFFER+8)*2, RINGBUF_TYPE_NOSPLIT);
-	xRingbuffer2 = xRingbufferCreate((MAX_HTTP_RECV_BUFFER+8)*100, RINGBUF_TYPE_NOSPLIT);
-	// Create Allow_Split Ring Buffer
-	//xRingbuffer2 = xRingbufferCreate((MAX_HTTP_RECV_BUFFER+8)*10, RINGBUF_TYPE_ALLOWSPLIT);
+	// https://docs.espressif.com/projects/esp-idf/en/latest/api-reference/system/mem_alloc.html
+	// Due to a technical limitation, the maximum statically allocated DRAM usage is 160KB.
+	// The remaining 160KB (for a total of 320KB of DRAM) can only be allocated at runtime as heap.
+	xRingbuffer1 = xRingbufferCreate(1000, RINGBUF_TYPE_NOSPLIT);
+	xRingbuffer2 = xRingbufferCreate(100000, RINGBUF_TYPE_NOSPLIT);
 	configASSERT( xRingbuffer1 );
 	configASSERT( xRingbuffer2 );
 
@@ -696,9 +680,9 @@ void app_main(void)
 	xEventGroup = xEventGroupCreate();
 	configASSERT( xEventGroup );
 
-	xTaskCreate(&vs1053_task, "VS1053", 1024*8, NULL, 5, NULL);
+	xTaskCreate(&vs1053_task, "VS1053", 1024*8, NULL, 6, NULL);
 	xTaskCreate(&console_task, "CONSOLE", 1024*4, NULL, 3, NULL);
-	xTaskCreate(&client_task, "CLIENT", 1024*8, NULL, 6, NULL);
+	xTaskCreate(&client_task, "CLIENT", 1024*8, NULL, 5, NULL);
 
 	// Restart client task, if it stop.
 	while(1) {
@@ -708,7 +692,7 @@ void app_main(void)
 			pdFALSE,			/* Don't wait for both bits, either bit will do. */
 			portMAX_DELAY);		/* Wait forever. */
 		ESP_LOGI(TAG, "HTTP_CLOSE_BIT");
-		xTaskCreate(&client_task, "CLIENT", 1024*8, NULL, 6, NULL);
+		xTaskCreate(&client_task, "CLIENT", 1024*8, NULL, 5, NULL);
 		xEventGroupSetBits( xEventGroup, HTTP_RESUME_BIT );
 	}
 
