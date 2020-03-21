@@ -360,7 +360,7 @@ int readStremDataWithMetadata(int fd, METADATA_t * hoge) {
 			if (hoge->currentSize == hoge->metaintSize) {
 				hoge->currentSize = 0;
 				hoge->metadataSize = buffer[0] * 16;
-				ESP_LOGI(TAG, "buffer=%x metadataSize=%d",buffer[0], hoge->metadataSize);
+				ESP_LOGD(TAG, "buffer=%x metadataSize=%d",buffer[0], hoge->metadataSize);
 				if (hoge->metadataSize == 0) continue;
 
 				if (hoge->metadata == NULL) {
