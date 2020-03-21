@@ -84,49 +84,18 @@ However, most are 0.
  --------------------------------------------------------------------------------
 ```
 
-## Pattern to receive Metadata chunk
+# About Transfer-Encoding: chunked
+There is some radio station return [Transfer-Encoding: chunked].   
+This is one of them.
 
-- Case1   
-All metadata chunks are included in the receive buffer.
 ```
- +------------------------------+
- |ssss....ssssBmmmm......mmmmsss|
- +------------------------------+
-  s : Stream data
-  B : Block number of metadata chunks
-  m : Metadata chunk
+host = "icecast.radiofrance.fr";
+path = "/franceculture-lofi.mp3";
+Port = 80;
 ```
 
-- Case2   
-Only the beginning of the metadata chunk is included in the receive buffer.   
-The metadata chunk continues on the next reception.
-```
- +------------------------------+
- |ssss.........ssssBmmmm......mm|
- +------------------------------+
+Details of [Transfer-Encoding: chunked] is [here](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding).   
 
- +------------------------------+
- |mmmmssss..................ssss|
- +------------------------------+
-```
-
-- Case3   
-Only the beginning of the metadata chunk is included in the receive buffer.   
-However, the next receive buffer is only a metadata chunk.   
-Occurs when the receive buffer size is small.
-```
- +------------------------------+
- |ssss.........ssssBmmmm......mm|
- +------------------------------+
-
- +------------------------------+
- |mmmm......................mmmm|
- +------------------------------+
-
- +------------------------------+
- |mmmmssss..................ssss|
- +------------------------------+
-```
 
 ## Display Metadata
 The detected Metadata is sent to the CONSOLE task via RingBuffer.   
