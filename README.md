@@ -84,21 +84,6 @@ However, most are 0.
  --------------------------------------------------------------------------------
 ```
 
-# About Transfer-Encoding: chunked
-There is some radio station return [Transfer-Encoding: chunked].   
-This is one of them.
-
-```
-host = "icecast.radiofrance.fr";
-path = "/franceculture-lofi.mp3";
-Port = 80;
-```
-
-Even if you request [Icy-MetaData: 1], there is no [Icy-metaint] in the responce.   
-Chunks are padded periodically.   
-Details of [Transfer-Encoding: chunked] is [here](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding).   
-
-
 ## Display Metadata
 The detected Metadata is sent to the CONSOLE task via RingBuffer.   
 By changing the CONSOLE task, the received Metadata can be displayed on an external monitor.   
@@ -125,4 +110,19 @@ https://github.com/nopnop2002/esp-idf-st7789
 - PCD8544
 https://github.com/yanbe/esp32-pcd8544-examples
 
+
+
+# About Transfer-Encoding: chunked
+There is some radio station return [Transfer-Encoding: chunked].   
+This is one of them.
+
+```
+host = "icecast.radiofrance.fr";
+path = "/franceculture-lofi.mp3";
+Port = 80;
+```
+
+Even if you request [Icy-MetaData: 1], there is no [Icy-metaint] in the responce.   
+Chunks are padded periodically.   
+Details of [Transfer-Encoding: chunked] is [here](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding).   
 
