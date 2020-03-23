@@ -126,9 +126,11 @@ Even if you request [Icy-MetaData: 1], there is no [Icy-metaint] in the responce
 Chunks are padded periodically.   
 Details of [Transfer-Encoding: chunked] is [here](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Transfer-Encoding).  
 ```
- -----------------------------------------------------------------------------------------
- |<StreamSize><0x0d><0x0a><----Stream data---><0x0d><0x0a><StreamSize><--- Stream data--->
- -----------------------------------------------------------------------------------------
+ -------------------------------------------------------------------------------------------------
+ |<StreamSize><CR><LF><---Stream data---><CR><LF><StreamSize><CR><LF><---Stream data---><CR><LF>
+ -------------------------------------------------------------------------------------------------
+
+<StreamSize> is Hexadecimal.
 ```
  
 
