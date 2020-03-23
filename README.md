@@ -130,7 +130,9 @@ Details of [Transfer-Encoding: chunked] is [here](https://developer.mozilla.org/
  |<StreamSize><CR><LF><---Stream data---><CR><LF><StreamSize><CR><LF><---Stream data---><CR><LF>
  -------------------------------------------------------------------------------------------------
 
-<StreamSize> is Hexadecimal.
+<StreamSize> is Hexadecimal string.
+
+<1234> is 4660 bytes.
 ```
  
 
