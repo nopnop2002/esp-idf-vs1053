@@ -282,6 +282,22 @@ uint16_t getIcyMetaint(HEADER_t * header) {
 	return rval;
 } 
 
+bool isTransferChunked(HEADER_t * header) {
+	char *sp1;
+	sp1 = strstr(header->headerBuffer, "\r\nTransfer-Encoding:");
+	if (sp1 == NULL) {
+		sp1 = strstr(header->headerBuffer, "\r\ntransfer-encoding:");
+	}
+	ESP_LOGD(TAG, "isTransferChunked sp1=%p", sp1);
+	if (sp1 != NULL) {
+		char *sp2 = strstr(sp1+20, "chunked");
+		ESP_LOGD(TAG, "isTransferChunked sp2=%p", sp2);
+		if (sp2 != NULL) return true;
+	}
+	return false;
+}
+
+
 uint16_t readHeader(int fd, HEADER_t * header) {
 	header->headerSize = 0;
 	header->headerBuffer = NULL;
@@ -322,15 +338,17 @@ uint16_t readHeader(int fd, HEADER_t * header) {
 
 
 typedef struct {
-	size_t currentSize;				// Total number of stream data
-	size_t metaintSize;				// icy-Metaint bytes
-	size_t ringbufferSize;
-	size_t metadataSize;
-	char   *metadata;				// Buffer of metadata
-	size_t streamdataSize;			// Byte length of stream data
-	char   *streamdata;				// Buffer of streamdata
-	char   *StreamTitle;
-	char   *StreamUrl;
+	size_t	currentSize;				// Total number of stream data
+	size_t	metaintSize;				// icy-Metaint bytes
+	size_t	ringbufferSize;				// Byte length of ringbuffer
+	size_t	metadataSize;				// Byte length of metadata
+	char	*metadata;					// Buffer of metadata
+	size_t	streamdataSize;				// Byte length of stream data
+	char	*streamdata;				// Buffer of streamdata
+	char	*StreamTitle;
+	char	*StreamUrl;
+	bool	chunked;					// Transfer-Encording: chunked
+	size_t	chunkCount;					// Byte size of chunk
 } METADATA_t;
 
 #define	METADATA	100
@@ -399,6 +417,42 @@ int readStremDataWithMetadata(int fd, METADATA_t * hoge) {
 		}
 	} // end while
 }
+
+
+int readStremDataWithChunked(int fd, METADATA_t * hoge) {
+    char buffer[2];
+	static size_t chunkSize = 0;
+    while(1) {
+        int read_len = read(fd, buffer, 1);
+        if (read_len < 0) {
+            // I don't know why it is disconnected from the server.
+            ESP_LOGW(pcTaskGetTaskName(0), "read_len = %d", read_len);
+            ESP_LOGW(pcTaskGetTaskName(0), "errno = %d", errno);
+            return READFAIL;
+        }
+
+        if (hoge->chunkCount == 0) {
+			if (buffer[0] == 0x0D) {
+
+			} else if (buffer[0] == 0x0A) {
+				ESP_LOGD(TAG, "chunkSize=%d", chunkSize);
+				hoge->chunkCount = chunkSize;
+				chunkSize = 0;
+			} else {
+				ESP_LOGD(TAG, "buffer[0]=%c", buffer[0]);
+				buffer[1] = 0;
+				long byte = strtol(buffer, NULL, 16);
+				chunkSize = (chunkSize << 4) + byte;
+			}
+		} else {
+			hoge->chunkCount--;
+            hoge->streamdata[hoge->streamdataSize] = buffer[0];
+            hoge->streamdataSize++;
+            if (hoge->streamdataSize == hoge->ringbufferSize) return STREAMDATA;
+        }
+    } // end while
+}
+
 
 
 void HexDump(char * buff, uint8_t len) {
@@ -588,6 +642,15 @@ Expires: Mon, 26 Jul 1997 05:00:00 GMT
 icy-metaint:16000
 #endif
 
+	if (strncmp(header.headerBuffer, "HTTP/1.0 200 OK", 15) != 0) {
+		if (strncmp(header.headerBuffer, "HTTP/1.1 200 OK", 15) != 0) {
+			ESP_LOGE(TAG, "Can't connect server");
+			while(1) {
+				vTaskDelay(100);
+			}
+		}
+	}
+
 	uint16_t metaint = getIcyMetaint(&header);
 	ESP_LOGI(pcTaskGetTaskName(0), "metaint=%d", metaint);
 	free(header.headerBuffer);
@@ -605,10 +668,18 @@ icy-metaint:16000
 	if (meta.streamdata == NULL) {
 		ESP_LOGE(pcTaskGetTaskName(0), "streamdata malloc fail");
 	}
+	meta.chunked = isTransferChunked(&header);
+	ESP_LOGI(pcTaskGetTaskName(0), "chunked=%d", meta.chunked);
+	meta.chunkCount = 0;
 
 	// main loop
 	while(1) {
-		int type = readStremDataWithMetadata(fd, &meta);
+		int type;
+		if (meta.chunked) {
+			type = readStremDataWithChunked(fd, &meta);
+		} else {
+			type = readStremDataWithMetadata(fd, &meta);
+		}
 		if (type == READFAIL) break;
 		if (type == MALLOCFAIL) break;
 
@@ -681,7 +752,7 @@ void app_main(void)
 
 	xTaskCreate(&vs1053_task, "VS1053", 1024*8, NULL, 6, NULL);
 	xTaskCreate(&console_task, "CONSOLE", 1024*4, NULL, 3, NULL);
-	xTaskCreate(&client_task, "CLIENT", 1024*8, NULL, 5, NULL);
+	xTaskCreate(&client_task, "CLIENT", 1024*10, NULL, 5, NULL);
 
 	// Restart client task, if it stop.
 	while(1) {
