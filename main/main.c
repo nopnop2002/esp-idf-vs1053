@@ -225,8 +225,6 @@ static void vs1053_task(void *pvParameters)
 typedef struct {
 	size_t headerSize;
 	char   *headerBuffer;
-	size_t icyMetaintSize;
-	char   *icyMetaintBuffer;
 } HEADER_t;
 
 
@@ -263,24 +261,24 @@ uint16_t getIcyMetaint(HEADER_t * header) {
 	char *sp2 = strstr(sp1+2, "\r\n");
 	//printf("sp2=%p\n",sp2);
 
-	header->icyMetaintSize = sp2-sp1-2;
-	ESP_LOGI(TAG, "getIcyMetaint:icyMetaintSize=%d",header->icyMetaintSize);
-	header->icyMetaintBuffer = malloc(header->icyMetaintSize+1);
-	if (header->icyMetaintBuffer == NULL) {
+	size_t icyMetaintSize = sp2-sp1-2;
+	ESP_LOGI(TAG, "icyMetaintSize=%d",icyMetaintSize);
+	char * icyMetaintBuffer = malloc(icyMetaintSize+1);
+	if (icyMetaintBuffer == NULL) {
 		ESP_LOGE(TAG, "icyMetaintBuffer malloc fail");
 		return 0;
 	}
-	strncpy(header->icyMetaintBuffer, sp1+2, header->icyMetaintSize);
-	header->icyMetaintBuffer[header->icyMetaintSize] = 0;
-	ESP_LOGI(TAG, "icyMetaintSize=%d",header->icyMetaintSize);
-	ESP_LOGI(TAG, "icyMetaintBuffer=[%s]",header->icyMetaintBuffer);
+	strncpy(icyMetaintBuffer, sp1+2, icyMetaintSize);
+	icyMetaintBuffer[icyMetaintSize] = 0;
+	ESP_LOGI(TAG, "icyMetaintBuffer=[%s]",icyMetaintBuffer);
 
 	uint16_t rval = 0;
-	char * sp3 = strstr(header->icyMetaintBuffer, ":");
+	char * sp3 = strstr(icyMetaintBuffer, ":");
 	if (sp3 != NULL) {
 		rval = strtol(sp3+1, NULL, 10);
 		ESP_LOGI(TAG, "rval=%d",rval);
 	}
+	free(icyMetaintBuffer);
 	return rval;
 } 
 
@@ -592,6 +590,7 @@ icy-metaint:16000
 
 	uint16_t metaint = getIcyMetaint(&header);
 	ESP_LOGI(pcTaskGetTaskName(0), "metaint=%d", metaint);
+	free(header.headerBuffer);
 
 	METADATA_t meta;
 	meta.currentSize = 0;
