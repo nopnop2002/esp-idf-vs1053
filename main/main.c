@@ -420,18 +420,18 @@ int readStremDataWithMetadata(int fd, METADATA_t * hoge) {
 
 
 int readStremDataWithChunked(int fd, METADATA_t * hoge) {
-    char buffer[2];
+	char buffer[2];
 	static size_t chunkSize = 0;
-    while(1) {
-        int read_len = read(fd, buffer, 1);
-        if (read_len < 0) {
-            // I don't know why it is disconnected from the server.
-            ESP_LOGW(pcTaskGetTaskName(0), "read_len = %d", read_len);
-            ESP_LOGW(pcTaskGetTaskName(0), "errno = %d", errno);
-            return READFAIL;
-        }
+	while(1) {
+		int read_len = read(fd, buffer, 1);
+		if (read_len < 0) {
+			// I don't know why it is disconnected from the server.
+			ESP_LOGW(pcTaskGetTaskName(0), "read_len = %d", read_len);
+			ESP_LOGW(pcTaskGetTaskName(0), "errno = %d", errno);
+			return READFAIL;
+		}
 
-        if (hoge->chunkCount == 0) {
+		if (hoge->chunkCount == 0) {
 			if (buffer[0] == 0x0D) {
 
 			} else if (buffer[0] == 0x0A) {
@@ -446,11 +446,11 @@ int readStremDataWithChunked(int fd, METADATA_t * hoge) {
 			}
 		} else {
 			hoge->chunkCount--;
-            hoge->streamdata[hoge->streamdataSize] = buffer[0];
-            hoge->streamdataSize++;
-            if (hoge->streamdataSize == hoge->ringbufferSize) return STREAMDATA;
-        }
-    } // end while
+			hoge->streamdata[hoge->streamdataSize] = buffer[0];
+			hoge->streamdataSize++;
+			if (hoge->streamdataSize == hoge->ringbufferSize) return STREAMDATA;
+		}
+	} // end while
 }
 
 
@@ -492,7 +492,7 @@ uint16_t getStreamTitle(METADATA_t * hoge) {
 	ESP_LOGI(TAG, "StreamTitle len=%d",len);
 	hoge->StreamTitle = malloc(len);
 	if (hoge->StreamTitle ==NULL) return 0;
-	strncpy(hoge->StreamTitle, sp1+12,  len);
+	strncpy(hoge->StreamTitle, sp1+12,	len);
 	ESP_LOGI(TAG, "StreamTitle=[%s]",hoge->StreamTitle);
 	return len;
 }
