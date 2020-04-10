@@ -134,5 +134,8 @@ Details of [Transfer-Encoding: chunked] is [here](https://developer.mozilla.org/
 
 <1234> is 4660 bytes.
 ```
- 
+
+# About 128K bit rate radio station
+On bit rate radio stations above 128K, this sample cannot be played for a long time.   
+Click [here](https://github.com/nopnop2002/esp-idf-vs1053/issues/2) for details.
 
