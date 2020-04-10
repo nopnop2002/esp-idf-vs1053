@@ -31,7 +31,9 @@ make flash
 
 # Wireing  
 
-|VS1053||ESP32|
+# for Blue board(VS1003)   
+
+|VS1003||ESP32|
 |:-:|:-:|:-:|
 |5V|--|VIN(*1)|
 |DGND|--|GND|
@@ -49,6 +51,27 @@ make flash
 ![vs1053-1](https://user-images.githubusercontent.com/6020549/76676544-0782b700-6608-11ea-8b79-6e77598f7b8e.JPG)
 
 ![vs1053-2](https://user-images.githubusercontent.com/6020549/76676546-09e51100-6608-11ea-8a78-104490b97406.JPG)
+
+
+# for Red board(VS1053)   
+
+|VS1053||ESP32|
+|:-:|:-:|:-:|
+|5V|--|VIN(*1)|
+|GND|--|GND|
+|CS|--|N/C|
+|MISO|--|GPIO19|
+|SI|--|GPIO23|
+|SCK|--|GPIO18|
+|XCS|--|GPIO5(*2)|
+|XRESET|--|EN(*2)|
+|XDCS|--|GPIO16(*2)|
+|DREQ|--|GPIO4(*2)|
+
+(*1) External power if no VIN Pin.   
+(*2) You can change any GPIO using menuconfig.   
+
+![vs1053-1](https://user-images.githubusercontent.com/6020549/78961282-e42a2980-7b2b-11ea-97d1-7fbf7317189a.JPG)
 
 ---
 
