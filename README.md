@@ -20,7 +20,7 @@ You have to set this config value with menuconfig.
 - CONFIG_SERVER_PATH   
 - CONFIG_IR_PROTOCOL(*)   
 
-__(*):See Infrared operation section   
+__(*)__:See Infrared operation section   
 
 
 ```
