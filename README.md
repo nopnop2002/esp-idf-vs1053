@@ -140,7 +140,7 @@ You can operate using infrared remote.
 
 ## Hardware requirements   
 - NEC or RC5 infrared remote.   
-- An infrared receiver module (e.g. IRM-3638T), which integrates a demodulator and AGC circuit.
+- An infrared receiver module (e.g. IRM-3638T), which integrates a demodulator and AGC circuit.   
 My recommendation is a vishay product.   
 http://www.vishay.com/ir-receiver-modules/   
 
