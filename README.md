@@ -139,7 +139,7 @@ Click [here](https://github.com/nopnop2002/esp-idf-vs1053/issues/2) for details.
 You can operate using infrared remote.   
 
 ## Hardware requirements   
-- NEC or RC5 infrared remote.   
+- NEC or RC5 infrared remote with two or more buttons.   
 - An infrared receiver module (e.g. IRM-3638T), which integrates a demodulator and AGC circuit.   
 My recommendation is a vishay product.   
 http://www.vishay.com/ir-receiver-modules/   
