@@ -126,7 +126,7 @@ I (17397) VS1053:   F -     0
 ---
 
 # Infrared operation   
-[There](https://github.com/espressif/esp-idf/tree/master/examples/peripherals/rmt/ir_protocols) is transmission and reception samples in NEC/RC5 protocol.   
+[There](https://github.com/espressif/esp-idf/tree/master/examples/peripherals/rmt/ir_protocols) is transmission and reception examjple using NEC/RC5 protocol.   
 If you incorporate this, you can operate it with infrared.   
 
 ---
