@@ -50,6 +50,8 @@ make flash
 
 ![vs1053-2](https://user-images.githubusercontent.com/6020549/76676546-09e51100-6608-11ea-8a78-104490b97406.JPG)
 
+---
+
 # About embedded metadata
 SHOUTCast server can put a Metadata Chunk in the middle of StreamData.   
 The Metadata Chunk contains song titles and radio station information.
@@ -110,7 +112,7 @@ https://github.com/nopnop2002/esp-idf-st7789
 - PCD8544
 https://github.com/yanbe/esp32-pcd8544-examples
 
-
+---
 
 # About Transfer-Encoding: chunked
 There is some radio station return [Transfer-Encoding: chunked].   
@@ -134,6 +136,8 @@ Details of [Transfer-Encoding: chunked] is [here](https://developer.mozilla.org/
 
 <1234> is 4660 bytes.
 ```
+
+---
 
 # About 128K bit rate radio station
 On bit rate radio stations above 128K, this sample cannot be played for a long time.   
