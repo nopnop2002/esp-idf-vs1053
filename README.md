@@ -100,17 +100,9 @@ https://github.com/UncleRus/esp-idf-lib/tree/master/examples/hd44780_i2c
 - SSD1306
 https://github.com/nopnop2002/esp-idf-ssd1306
 
-- ILI9325/9340/9341
-https://github.com/nopnop2002/esp-idf-ili9340
-
-- ST7735
-https://github.com/nopnop2002/esp-idf-ili9340
-
-- ST7789
-https://github.com/nopnop2002/esp-idf-st7789
-
-- PCD8544
-https://github.com/yanbe/esp32-pcd8544-examples
+__Note__:   
+SPI Interface cannot be used for this purpose.   
+Because VS1053 occupies SPI.   
 
 ---
 
