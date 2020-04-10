@@ -59,7 +59,7 @@ make flash
 |:-:|:-:|:-:|
 |5V|--|VIN(*1)|
 |GND|--|GND|
-|CS|--|N/C|
+|CS|--|N/C(*3)|
 |MISO|--|GPIO19|
 |SI|--|GPIO23|
 |SCK|--|GPIO18|
@@ -70,6 +70,7 @@ make flash
 
 (*1) External power if no VIN Pin.   
 (*2) You can change any GPIO using menuconfig.   
+(*3) For SD card reader on the back   
 
 ![vs1053-1](https://user-images.githubusercontent.com/6020549/78961282-e42a2980-7b2b-11ea-97d1-7fbf7317189a.JPG)
 
