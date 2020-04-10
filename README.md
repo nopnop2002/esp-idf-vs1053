@@ -76,6 +76,55 @@ make flash
 
 ---
 
+# How to judge chips   
+
+- VS1003
+```
+I (2135) VS1053: REG     Contents
+I (2135) VS1053: ---     -----
+I (2145) VS1053:   0 -   800
+I (2155) VS1053:   1 -    38 ---- > 0x3X is VS1003
+I (2165) VS1053:   2 -     0
+I (2175) VS1053:   3 -     0
+I (2185) VS1053:   4 -     0
+I (2195) VS1053:   5 -  1F40
+I (2205) VS1053:   6 -     0
+I (2215) VS1053:   7 -     0
+I (2225) VS1053:   8 -     0
+I (2235) VS1053:   9 -     0
+I (2245) VS1053:   A -     0
+I (2255) VS1053:   B -     0
+I (2265) VS1053:   C -     0
+I (2275) VS1053:   D -     0
+I (2285) VS1053:   E -     0
+I (2295) VS1053:   F -     0
+
+```
+
+- VS1053
+```
+I (17237) VS1053: REG    Contents
+I (17237) VS1053: ---    -----
+I (17247) VS1053:   0 -  4800
+I (17257) VS1053:   1 -    40 ---- > 0x4X is VS1053
+I (17267) VS1053:   2 -     0
+I (17277) VS1053:   3 -  6000
+I (17287) VS1053:   4 -     0
+I (17297) VS1053:   5 -  AC44
+I (17307) VS1053:   6 -     0
+I (17317) VS1053:   7 -  1E06
+I (17327) VS1053:   8 -     0
+I (17337) VS1053:   9 -     0
+I (17347) VS1053:   A -     0
+I (17357) VS1053:   B -  FFFC
+I (17367) VS1053:   C -     0
+I (17377) VS1053:   D -     0
+I (17387) VS1053:   E -     0
+I (17397) VS1053:   F -     0
+```
+
+---
+
 # About embedded metadata
 SHOUTCast server can put a Metadata Chunk in the middle of StreamData.   
 The Metadata Chunk contains song titles and radio station information.
