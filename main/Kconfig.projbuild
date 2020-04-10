@@ -115,28 +115,28 @@ menu "Application Configuration"
 
     config IR_ADDR_ON
 		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-        hex "PLAY START REMOTE ADDR"
+        hex "Remote ADDR to start PLAY"
         default 0xff00
         help
 			Set IR address of play start.
 
     config IR_CMD_ON
 		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-        hex "PLAY START REMOTE CMD"
+        hex "Remote CMD to start PLAY"
         default 0x1111
         help
 			Set IR command of play start.
 
     config IR_ADDR_OFF
 		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-        hex "PLAY STOP REMOTE ADDR"
+        hex "Remote ADDR to stop PLAY"
         default 0xff00
         help
 			Set IR address of play stop.
 
     config IR_CMD_OFF
 		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-        hex "PLAY STOP REMOTE CMD"
+        hex "Remote CMD to stop PLAY"
         default 0x2222
         help
 			Set IR command of play stop.

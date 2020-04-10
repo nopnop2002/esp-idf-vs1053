@@ -178,7 +178,7 @@ This is typical wireing.
 
 ![config-3](https://user-images.githubusercontent.com/6020549/79027558-a7137500-7bc7-11ea-8fd8-0b450c3eff06.jpg)
 
-![config-4](https://user-images.githubusercontent.com/6020549/79027928-0f168b00-7bc9-11ea-9998-5a1d070e4d4f.jpg)
+![config-4](https://user-images.githubusercontent.com/6020549/79028882-dc6e9180-7bcc-11ea-8530-b5ea732729e0.jpg)
 
 ---
 
