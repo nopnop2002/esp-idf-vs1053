@@ -123,6 +123,10 @@ I (17387) VS1053:   E -     0
 I (17397) VS1053:   F -     0
 ```
 
+With the VS1003, radio stations larger than 128K bit rate cannot be played for a long time.   
+VS1003 and VS1053 have completely different performance.   
+Click [here](https://github.com/nopnop2002/esp-idf-vs1053/issues/2) for details.
+
 ---
 
 # Infrared operation   
@@ -207,11 +211,4 @@ Details of [Transfer-Encoding: chunked] is [here](https://developer.mozilla.org/
 
 <1234> is 4660 bytes.
 ```
-
----
-
-# About 128K bit rate radio station
-With the VS1003, radio stations larger than 128K bit rate cannot be played for a long time.   
-VS1003 and VS1053 have completely different performance.   
-Click [here](https://github.com/nopnop2002/esp-idf-vs1053/issues/2) for details.
 
