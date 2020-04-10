@@ -211,6 +211,7 @@ Details of [Transfer-Encoding: chunked] is [here](https://developer.mozilla.org/
 ---
 
 # About 128K bit rate radio station
-In this example, radio stations larger than 128K bit rate cannot be played for a long time.   
+With the VS1003, radio stations larger than 128K bit rate cannot be played for a long time.   
+VS1003 and VS1053 have completely different performance.   
 Click [here](https://github.com/nopnop2002/esp-idf-vs1053/issues/2) for details.
 
