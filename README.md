@@ -18,6 +18,7 @@ You have to set this config value with menuconfig.
 - CONFIG_SERVER_HOST   
 - CONFIG_SERVER_PORT   
 - CONFIG_SERVER_PATH   
+- CONFIG_IR_PROTOCOL(*)   
 ```
 git clone https://github.com/nopnop2002/esp-idf-vs1053
 cd esp-idf-vs1053
@@ -27,7 +28,9 @@ make flash
 
 ![config-1](https://user-images.githubusercontent.com/6020549/76663983-3415df00-65c6-11ea-93db-9ec83e2601df.jpg)
 
-![config-2](https://user-images.githubusercontent.com/6020549/76910307-047e1400-68f1-11ea-8907-c7e9a085c0b2.jpg)
+![config-2](https://user-images.githubusercontent.com/6020549/79027555-a4b11b00-7bc7-11ea-8c06-ed4a468e66da.jpg)
+
+__(*):See Infrared operation section   
 
 # Wireing  
 
@@ -130,8 +133,29 @@ Click [here](https://github.com/nopnop2002/esp-idf-vs1053/issues/2) for details.
 ---
 
 # Infrared operation   
-[There](https://github.com/espressif/esp-idf/tree/master/examples/peripherals/rmt/ir_protocols) is transmission and reception example using NEC/RC5 protocol.   
-If you incorporate this, you can operate it with infrared.   
+You can operate using infrared remote.   
+
+## Hardware requirements   
+- NEC or RC5 infrared remote.   
+- An infrared receiver module (e.g. IRM-3638T), which integrates a demodulator and AGC circuit.
+
+## Get infrared code   
+Use [this](https://github.com/espressif/esp-idf/tree/master/examples/peripherals/rmt/ir_protocols) example to get the infrared code.   
+
+## Wireing   
+This is typical wireing.   
+
+![ESP32-IRRecv](https://user-images.githubusercontent.com/6020549/79027933-12117b80-7bc9-11ea-8395-0bd6b75ef75f.jpg)
+
+## Configure
+- Infrared Protocol   
+- RMT RX GPIO   
+- PLAY START REMOTE ADDR & CMD   
+- PLAY STOP REMOTE ADDR & CMD   
+
+![config-3](https://user-images.githubusercontent.com/6020549/79027558-a7137500-7bc7-11ea-8fd8-0b450c3eff06.jpg)
+
+![config-4](https://user-images.githubusercontent.com/6020549/79027928-0f168b00-7bc9-11ea-9998-5a1d070e4d4f.jpg)
 
 ---
 

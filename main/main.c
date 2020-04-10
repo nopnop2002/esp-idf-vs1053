@@ -18,6 +18,9 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 
+#include "driver/rmt.h"
+#include "ir_tools.h"
+
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
@@ -46,6 +49,7 @@ static EventGroupHandle_t s_wifi_event_group;
 
 #define HTTP_RESUME_BIT		BIT0
 #define HTTP_CLOSE_BIT		BIT2
+#define PLAY_START_BIT		BIT4
 
 static const char *TAG = "MAIN";
 
@@ -168,6 +172,80 @@ static void console_task(void *pvParameters)
 	vTaskDelete(NULL);
 }
 
+
+#if 0
+#define CONFIG_RMT_RX_GPIO	34
+#define CONFIG_IR_PROTOCOL_NEC 1
+#define CONFIG_IR_ADDR_ON 0xff00
+#define CONFIG_IR_CMD_ON 0xfe01
+#define CONFIG_IR_ADDR_OFF 0xff00
+#define CONFIG_IR_CMD_OFF 0xf609
+#endif
+
+
+
+#if CONFIG_IR_PROTOCOL_NEC || CONFIG_IR_PROTOCOL_RC5
+
+static rmt_channel_t ir_rx_channel = RMT_CHANNEL_0;
+
+static void ir_rx_task(void *arg)
+{
+    uint32_t addr = 0;
+    uint32_t cmd = 0;
+    uint32_t length = 0;
+    bool repeat = false;
+    RingbufHandle_t rb = NULL;
+    rmt_item32_t *items = NULL;
+
+	ESP_LOGI(pcTaskGetTaskName(0), "Start");
+    rmt_config_t rmt_rx_config = RMT_DEFAULT_CONFIG_RX(CONFIG_RMT_RX_GPIO, ir_rx_channel);
+    rmt_config(&rmt_rx_config);
+    rmt_driver_install(ir_rx_channel, 1000, 0);
+    ir_parser_config_t ir_parser_config = IR_PARSER_DEFAULT_CONFIG((ir_dev_t)ir_rx_channel);
+    ir_parser_t *ir_parser = NULL;
+#if CONFIG_IR_PROTOCOL_NEC
+    ir_parser = ir_parser_rmt_new_nec(&ir_parser_config);
+#elif CONFIG_IR_PROTOCOL_RC5
+    ir_parser = ir_parser_rmt_new_rc5(&ir_parser_config);
+#endif
+
+    //get RMT RX ringbuffer
+    rmt_get_ringbuf_handle(ir_rx_channel, &rb);
+	configASSERT( rb );
+    // Start receive
+    rmt_rx_start(ir_rx_channel, true);
+    while (rb) {
+        items = (rmt_item32_t *) xRingbufferReceive(rb, &length, 1000);
+        if (items) {
+            length /= 4; // one RMT = 4 Bytes
+            if (ir_parser->input(ir_parser, items, length) == ESP_OK) {
+                if (ir_parser->get_scan_code(ir_parser, &addr, &cmd, &repeat) == ESP_OK) {
+                    ESP_LOGI(pcTaskGetTaskName(0), "Scan Code %s --- addr: 0x%04x cmd: 0x%04x", repeat ? "(repeat)" : "", addr, cmd);
+					if (addr == CONFIG_IR_ADDR_ON && cmd == CONFIG_IR_CMD_ON) {
+						ESP_LOGI(pcTaskGetTaskName(0), "play start");
+						xEventGroupSetBits( xEventGroup, PLAY_START_BIT );
+					}
+					if (addr == CONFIG_IR_ADDR_OFF && cmd == CONFIG_IR_CMD_OFF) {
+						ESP_LOGI(pcTaskGetTaskName(0), "play stop");
+						xEventGroupClearBits( xEventGroup, PLAY_START_BIT );
+					}
+                }
+            }
+            //after parsing the data, return spaces to ringbuffer.
+            vRingbufferReturnItem(rb, (void *) items);
+        } else {
+			ESP_LOGD(pcTaskGetTaskName(0), "xRingbufferReceive is NULL");
+            //break;
+        }
+    }
+
+	// never reach here
+    ir_parser->del(ir_parser);
+    rmt_driver_uninstall(ir_rx_channel);
+    vTaskDelete(NULL);
+}
+#endif
+
 #if 0
 #define CONFIG_GPIO_CS 5
 #define CONFIG_GPIO_DCS 16
@@ -210,7 +288,7 @@ static void vs1053_task(void *pvParameters)
 			vRingbufferReturnItem(xRingbuffer2, (void *)item);
 		} else {
 			//Failed to receive item
-			ESP_LOGW(pcTaskGetTaskName(0), "No receive item");
+			ESP_LOGD(pcTaskGetTaskName(0), "No receive item");
 			vTaskDelay(1);
 		}
 		//vTaskDelay(10);
@@ -672,6 +750,13 @@ icy-metaint:16000
 	ESP_LOGI(pcTaskGetTaskName(0), "chunked=%d", meta.chunked);
 	meta.chunkCount = 0;
 
+	bool playStatus;
+	int playStatusCheck = 0;
+#if CONFIG_IR_PROTOCOL_NONE
+	playStatus = true;
+#else
+	playStatus = false;
+#endif
 	// main loop
 	while(1) {
 		int type;
@@ -689,8 +774,22 @@ icy-metaint:16000
 		}
 
 		if (type == STREAMDATA) {
-			ESP_LOGD(pcTaskGetTaskName(0),"streamdataSize=%d ringbufferSize=%d",meta.streamdataSize, meta.ringbufferSize);
-			xRingbufferSend(xRingbuffer2, meta.streamdata, meta.streamdataSize, 0);
+			if (playStatus) {
+				ESP_LOGD(pcTaskGetTaskName(0),"streamdataSize=%d ringbufferSize=%d",meta.streamdataSize, meta.ringbufferSize);
+				xRingbufferSend(xRingbuffer2, meta.streamdata, meta.streamdataSize, 0);
+				playStatusCheck++;
+				if (playStatusCheck == 10) {
+					EventBits_t eventBit = xEventGroupGetBits(xEventGroup);
+					ESP_LOGD(pcTaskGetTaskName(0),"eventBit=%x", eventBit);
+					if ( (eventBit & 0x10) == 0x00) playStatus = false;
+					playStatusCheck = 0;
+				}
+			} else {
+				EventBits_t eventBit = xEventGroupGetBits(xEventGroup);
+				ESP_LOGD(pcTaskGetTaskName(0),"eventBit=%x", eventBit);
+				if ( (eventBit & 0x10) == 0x10) playStatus = true;
+				playStatusCheck = 0;
+			}
 			meta.streamdataSize = 0;
 
 			// Adjust the buffer size according to the free size of xRingbuffer.
@@ -753,6 +852,24 @@ void app_main(void)
 	xTaskCreate(&vs1053_task, "VS1053", 1024*8, NULL, 6, NULL);
 	xTaskCreate(&console_task, "CONSOLE", 1024*4, NULL, 3, NULL);
 	xTaskCreate(&client_task, "CLIENT", 1024*10, NULL, 5, NULL);
+#if CONFIG_IR_PROTOCOL_NONE
+	ESP_LOGI(TAG, "Your remote is NONE");
+	xEventGroupSetBits( xEventGroup, PLAY_START_BIT );
+#else
+	xEventGroupClearBits( xEventGroup, PLAY_START_BIT );
+#if CONFIG_IR_PROTOCOL_NEC 
+	ESP_LOGI(TAG, "Your remote is NEC");
+	xTaskCreate(&ir_rx_task, "NEC", 1024*2, NULL, 5, NULL);
+#endif
+#if CONFIG_IR_PROTOCOL_RC5
+	ESP_LOGI(TAG, "Your remote is RC5");
+	xTaskCreate(&ir_rx_task, "RC5", 1024*2, NULL, 5, NULL);
+#endif
+	ESP_LOGI(TAG, "CONFIG_ADDR_ON=0x%x", CONFIG_IR_ADDR_ON);
+	ESP_LOGI(TAG, "CONFIG_CMD_ON=0x%x", CONFIG_IR_CMD_ON);
+	ESP_LOGI(TAG, "CONFIG_ADDR_OFF=0x%x", CONFIG_IR_ADDR_OFF);
+	ESP_LOGI(TAG, "CONFIG_CMD_OFF=0x%x", CONFIG_IR_CMD_OFF);
+#endif
 
 	// Restart client task, if it stop.
 	while(1) {
