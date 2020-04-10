@@ -19,6 +19,10 @@ You have to set this config value with menuconfig.
 - CONFIG_SERVER_PORT   
 - CONFIG_SERVER_PATH   
 - CONFIG_IR_PROTOCOL(*)   
+
+__(*):See Infrared operation section   
+
+
 ```
 git clone https://github.com/nopnop2002/esp-idf-vs1053
 cd esp-idf-vs1053
@@ -30,7 +34,6 @@ make flash
 
 ![config-2](https://user-images.githubusercontent.com/6020549/79027555-a4b11b00-7bc7-11ea-8c06-ed4a468e66da.jpg)
 
-__(*):See Infrared operation section   
 
 # Wireing  
 
@@ -141,6 +144,24 @@ You can operate using infrared remote.
 
 ## Get infrared code   
 Use [this](https://github.com/espressif/esp-idf/tree/master/examples/peripherals/rmt/ir_protocols) example to get the infrared code.   
+Run this example, you will see the following output log (for NEC protocol):   
+```
+I (2000) example: Send command 0x20 to address 0x10
+I (2070) example: Scan Code  --- addr: 0x0010 cmd: 0x0020
+I (2220) example: Scan Code (repeat) --- addr: 0x0010 cmd: 0x0020
+I (4240) example: Send command 0x21 to address 0x10
+I (4310) example: Scan Code  --- addr: 0x0010 cmd: 0x0021
+I (4460) example: Scan Code (repeat) --- addr: 0x0010 cmd: 0x0021
+I (6480) example: Send command 0x22 to address 0x10
+I (6550) example: Scan Code  --- addr: 0x0010 cmd: 0x0022
+I (6700) example: Scan Code (repeat) --- addr: 0x0010 cmd: 0x0022
+I (8720) example: Send command 0x23 to address 0x10
+I (8790) example: Scan Code  --- addr: 0x0010 cmd: 0x0023
+I (8940) example: Scan Code (repeat) --- addr: 0x0010 cmd: 0x0023
+I (10960) example: Send command 0x24 to address 0x10
+I (11030) example: Scan Code  --- addr: 0x0010 cmd: 0x0024
+I (11180) example: Scan Code (repeat) --- addr: 0x0010 cmd: 0x0024
+```
 
 ## Wireing   
 This is typical wireing.   
