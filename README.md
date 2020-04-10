@@ -173,8 +173,8 @@ This is typical wireing.
 ## Configure
 - Infrared Protocol   
 - RMT RX GPIO   
-- PLAY START REMOTE ADDR & CMD   
-- PLAY STOP REMOTE ADDR & CMD   
+- Remote ADDR & CMD to start PLAY   
+- Remote ADDR & CMD to stop PLAY   
 
 ![config-3](https://user-images.githubusercontent.com/6020549/79027558-a7137500-7bc7-11ea-8fd8-0b450c3eff06.jpg)
 
