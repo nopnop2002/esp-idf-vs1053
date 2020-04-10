@@ -125,6 +125,12 @@ I (17397) VS1053:   F -     0
 
 ---
 
+# Infrared operation   
+[There](https://github.com/espressif/esp-idf/tree/master/examples/peripherals/rmt/ir_protocols) is transmission and reception samples in NEC/RC5 protocol.   
+If you incorporate this, you can operate it with infrared.   
+
+---
+
 # About embedded metadata
 SHOUTCast server can put a Metadata Chunk in the middle of StreamData.   
 The Metadata Chunk contains song titles and radio station information.
