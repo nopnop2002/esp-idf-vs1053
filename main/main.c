@@ -750,13 +750,9 @@ icy-metaint:16000
 	ESP_LOGI(pcTaskGetTaskName(0), "chunked=%d", meta.chunked);
 	meta.chunkCount = 0;
 
-	bool playStatus;
+	bool playStatus = true;
 	int playStatusCheck = 0;
-#if CONFIG_IR_PROTOCOL_NONE
-	playStatus = true;
-#else
-	playStatus = false;
-#endif
+
 	// main loop
 	while(1) {
 		int type;
@@ -856,7 +852,6 @@ void app_main(void)
 	ESP_LOGI(TAG, "Your remote is NONE");
 	xEventGroupSetBits( xEventGroup, PLAY_START_BIT );
 #else
-	xEventGroupClearBits( xEventGroup, PLAY_START_BIT );
 #if CONFIG_IR_PROTOCOL_NEC 
 	ESP_LOGI(TAG, "Your remote is NEC");
 	xTaskCreate(&ir_rx_task, "NEC", 1024*2, NULL, 5, NULL);
@@ -869,6 +864,7 @@ void app_main(void)
 	ESP_LOGI(TAG, "CONFIG_CMD_ON=0x%x", CONFIG_IR_CMD_ON);
 	ESP_LOGI(TAG, "CONFIG_ADDR_OFF=0x%x", CONFIG_IR_ADDR_OFF);
 	ESP_LOGI(TAG, "CONFIG_CMD_OFF=0x%x", CONFIG_IR_CMD_OFF);
+	xEventGroupSetBits( xEventGroup, PLAY_START_BIT );
 #endif
 
 	// Restart client task, if it stop.
