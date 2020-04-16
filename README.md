@@ -5,6 +5,9 @@ I ported from from [here](https://github.com/baldram/ESP_VS1053_Library).
 # Software requirements
 esp-idf ver4.1 or later.   
 
+# Hardware requirements
+VS1003 or VS1053 Development Board.   
+
 # Configure   
 You have to set this config value with menuconfig.   
 - CONFIG_ESP_WIFI_SSID   
