@@ -50,9 +50,9 @@ make flash
 |MOSI|--|GPIO23|
 |SCK|--|GPIO18|
 |DREQ|--|GPIO4(*2)|
-|RST|--|EN(*2)|
-|CS|--|GPIO5(*2)|
-|DCS|--|GPIO16(*2)|
+|XRST|--|EN(*2)|
+|XCS|--|GPIO5(*2)|
+|XDCS|--|GPIO16(*2)|
 
 (*1) External power if no VIN Pin.   
 (*2) You can change any GPIO using menuconfig.   
@@ -82,6 +82,12 @@ make flash
 (*3) For SD card reader on the back   
 
 ![vs1053-1](https://user-images.githubusercontent.com/6020549/78961282-e42a2980-7b2b-11ea-97d1-7fbf7317189a.JPG)
+
+
+# for Green board(VS1053)   
+Same as Red board.   
+
+![vs1053-GREEN](https://user-images.githubusercontent.com/6020549/81255518-cd162300-9068-11ea-9021-7fb3b2d09491.JPG)
 
 ---
 
