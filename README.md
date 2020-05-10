@@ -85,7 +85,7 @@ make flash
 
 
 # for Green board(VS1053)   
-Same as Red board.   
+Same as Blue board.   
 
 ![vs1053-GREEN](https://user-images.githubusercontent.com/6020549/81255518-cd162300-9068-11ea-9021-7fb3b2d09491.JPG)
 
