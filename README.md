@@ -91,7 +91,7 @@ Same as Red board.
 
 ---
 
-# How to judge chips   
+# Chip identification   
 
 - VS1003
 ```
