@@ -777,13 +777,15 @@ icy-metaint:16000
 				if (playStatusCheck == 10) {
 					EventBits_t eventBit = xEventGroupGetBits(xEventGroup);
 					ESP_LOGD(pcTaskGetTaskName(0),"eventBit=%x", eventBit);
-					if ( (eventBit & 0x10) == 0x00) playStatus = false;
+					//if ( (eventBit & 0x10) == 0x00) playStatus = false;
+					if ( (eventBit & PLAY_START_BIT) == 0x00) playStatus = false;
 					playStatusCheck = 0;
 				}
 			} else {
 				EventBits_t eventBit = xEventGroupGetBits(xEventGroup);
 				ESP_LOGD(pcTaskGetTaskName(0),"eventBit=%x", eventBit);
-				if ( (eventBit & 0x10) == 0x10) playStatus = true;
+				//if ( (eventBit & 0x10) == 0x10) playStatus = true;
+				if ( (eventBit & PLAY_START_BIT) == 0x10) playStatus = true;
 				playStatusCheck = 0;
 			}
 			meta.streamdataSize = 0;
