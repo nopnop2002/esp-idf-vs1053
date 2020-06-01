@@ -227,7 +227,7 @@ However, most are 0.
 
 ## Display Metadata
 The detected Metadata is sent to the CONSOLE task via RingBuffer.   
-Console task display example:   
+CONSOLE task display example:   
 ```
 I (3479002) CONSOLE: xRingbufferReceive item_size=112
 I (3479012) CONSOLE:
