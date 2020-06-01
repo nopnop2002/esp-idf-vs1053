@@ -227,6 +227,13 @@ However, most are 0.
 
 ## Display Metadata
 The detected Metadata is sent to the CONSOLE task via RingBuffer.   
+Console task display example:   
+```
+I (3479002) CONSOLE: xRingbufferReceive item_size=112
+I (3479012) CONSOLE:
+StreamTitle='Maria Muldaur - Sweet Harmony';StreamUrl='http://somafm.com/logos/512/seventies512.jpg';
+```
+
 By changing the CONSOLE task, the received Metadata can be displayed on an external monitor.   
 These pages will be helpful.
 
