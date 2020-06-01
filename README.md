@@ -239,9 +239,12 @@ https://github.com/UncleRus/esp-idf-lib/tree/master/examples/hd44780_i2c
 - SSD1306
 https://github.com/nopnop2002/esp-idf-ssd1306
 
-__Note__:   
+__Note:__   
 SPI Interface cannot be used for this purpose.   
 Because VS1053 occupies SPI.   
+
+__My recommendation:__   
+My recommendation is to transfer the detected metadata to another ESP on the network and view it on another ESP.
 
 ---
 
