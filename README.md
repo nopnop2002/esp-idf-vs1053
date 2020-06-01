@@ -244,7 +244,8 @@ SPI Interface cannot be used for this purpose.
 Because VS1053 occupies SPI.   
 
 __My recommendation:__   
-My recommendation is to transfer the detected metadata to another ESP on the network and view it on another ESP.
+My recommendation is to transfer the detected metadata to another ESP on the network and view it on another ESP.   
+The simplest implementation is UDP Broadcast.
 
 ---
 
