@@ -8,6 +8,8 @@ esp-idf ver4.1 or later.
 
 # Hardware requirements
 VS1003 or VS1053 Development Board.   
+The performance of VS1003 (Blue Board) and VS1053 is completely different.   
+__VS1003 (Blue Board) is not fast.__   
 
 # Configure   
 You have to set this config value with menuconfig.   
