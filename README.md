@@ -42,8 +42,9 @@ __(*)__:See Infrared operation section
 ```
 git clone https://github.com/nopnop2002/esp-idf-vs1053
 cd esp-idf-vs1053
-make menuconfig
-make flash
+idf.py set-target esp32
+idf.py menuconfig
+idf.py flash monitor
 ```
 
 ![config-1](https://user-images.githubusercontent.com/6020549/76663983-3415df00-65c6-11ea-93db-9ec83e2601df.jpg)
