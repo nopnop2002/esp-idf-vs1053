@@ -159,10 +159,6 @@ Click [here](https://github.com/nopnop2002/esp-idf-vs1053/issues/2) for details.
 
 ---
 
-# Metadata output   
-
----
-
 # Infrared operation   
 You can operate using infrared remote.   
 
