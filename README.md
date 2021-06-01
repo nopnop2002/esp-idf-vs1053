@@ -273,7 +273,7 @@ You can select Metadata output destination using menuconfig.
 ![config-metadata-2](https://user-images.githubusercontent.com/6020549/120303386-c0b2d700-c309-11eb-82cb-73076df3c877.jpg)
 
 You can use udp_receive.py to receive Broadcast metadata.   
-
+UDP broadcast data can be received by ESP32/ESP8266.   
 ![udp-receive](https://user-images.githubusercontent.com/6020549/120304206-8ac22280-c30a-11eb-9d81-f9a09ba43db1.jpg)
 
 ---
