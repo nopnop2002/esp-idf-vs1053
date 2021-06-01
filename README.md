@@ -47,7 +47,7 @@ Volume of VS1003.
 Play [this internet radio](https://somafm.com/player/#/now-playing/seventies).   
 - CONFIG_SERVER_PORT   
 - CONFIG_SERVER_PATH   
-- CONFIG_METADATA_OUTPUT
+- CONFIG_METADATA_OUTPUT   
 See Display Metadata section.   
 - CONFIG_IR_PROTOCOL   
 See Infrared operation section.   
@@ -273,11 +273,10 @@ __My recommendation:__
 My recommendation is to transfer the detected metadata to another ESP on the network and view it on another ESP.   
 The simplest implementation is UDP Broadcast.   
 You can select Metadata output destination using menuconfig.   
-
 ![config-metadata-1](https://user-images.githubusercontent.com/6020549/120303382-bf81aa00-c309-11eb-9bdf-d254a27c172a.jpg)
 ![config-metadata-2](https://user-images.githubusercontent.com/6020549/120303386-c0b2d700-c309-11eb-82cb-73076df3c877.jpg)
 
-You can use udp_receive.py receiving metadata.   
+You can use udp_receive.py to receive Broadcast metadata.   
 
 ![udp-receive](https://user-images.githubusercontent.com/6020549/120304206-8ac22280-c30a-11eb-9d81-f9a09ba43db1.jpg)
 
