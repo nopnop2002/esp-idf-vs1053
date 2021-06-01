@@ -8,13 +8,7 @@ while True:
 	result = select.select([s],[],[])
 	rbuf = result[0][0].recv(1024)
 	print("recv type={}".format(type(rbuf)))
-	if (type(rbuf) is str):
-		print("str")
-		msg=array.array('B',rbuf)
-		print("type(msg)={}".format(type(msg)))
-		print(msg)
-	else:
-		print("bytes")
+	if (type(rbuf) is bytes):
 		msg=rbuf.decode('utf-8')
 		print("type(msg)={}".format(type(msg)))
-		print(msg)
+	print(msg)
