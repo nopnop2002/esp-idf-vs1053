@@ -142,6 +142,8 @@ esp_err_t wifi_init_sta(void)
 #define MAX_HTTP_RECV_BUFFER 512
 #define MIN_HTTP_RECV_BUFFER 32
 
+#if CONFIG_METADATA_CONSOLE
+// Console task
 static void console_task(void *pvParameters)
 {
 	ESP_LOGI(pcTaskGetTaskName(0), "Start");
@@ -166,12 +168,61 @@ static void console_task(void *pvParameters)
 		}
 	}
 
-	// never reach here
+	// Don't reach here
 	free(buffer);
 	ESP_LOGI(pcTaskGetTaskName(0), "Finish");
 	vTaskDelete(NULL);
 }
+#endif
 
+#if CONFIG_METADATA_BROADCAST
+// UDP Bradcast Task
+static void udp_task(void *pvParameters)
+{
+	ESP_LOGI(pcTaskGetTaskName(0), "Start");
+	char *buffer = malloc(MAX_HTTP_RECV_BUFFER + 1);
+	if (buffer == NULL) {
+		ESP_LOGE(pcTaskGetTaskName(0), "Cannot malloc http receive buffer");
+		while(1) { vTaskDelay(1); }
+	}
+
+	/* set up address to sendto */
+	struct sockaddr_in addr;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_port = htons(CONFIG_UDP_PORT);
+	addr.sin_addr.s_addr = htonl(INADDR_BROADCAST); /* send message to 255.255.255.255 */
+
+	/* create the socket */
+	int fd;
+	int ret;
+	fd = lwip_socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP ); // Create a UDP socket.
+	LWIP_ASSERT("fd >= 0", fd >= 0);
+
+	size_t item_size;
+	while (1) {
+		char *item = (char *)xRingbufferReceive(xRingbuffer1, &item_size, pdMS_TO_TICKS(1000));
+		if (item != NULL) {
+			ESP_LOGI(pcTaskGetTaskName(0), "xRingbufferReceive item_size=%d", item_size);
+			for (int i = 0; i < item_size; i++) {
+				buffer[i] = item[i];
+				buffer[i+1] = 0;
+			}
+			ESP_LOGI(pcTaskGetTaskName(0),"\n%s",buffer);
+			ret = lwip_sendto(fd, buffer, item_size, 0, (struct sockaddr *)&addr, sizeof(addr));
+			LWIP_ASSERT("ret == item_size", ret == item_size);
+
+			//Return Item
+			vRingbufferReturnItem(xRingbuffer1, (void *)item);
+		}
+	}
+
+	/* close socket. Don't reach here.*/
+	ret = lwip_close(fd);
+	LWIP_ASSERT("ret == 0", ret == 0);
+	vTaskDelete( NULL );
+}
+#endif
 
 #if 0
 #define CONFIG_RMT_RX_GPIO	34
@@ -190,37 +241,37 @@ static rmt_channel_t ir_rx_channel = RMT_CHANNEL_0;
 
 static void ir_rx_task(void *arg)
 {
-    uint32_t addr = 0;
-    uint32_t cmd = 0;
-    uint32_t length = 0;
-    bool repeat = false;
-    RingbufHandle_t rb = NULL;
-    rmt_item32_t *items = NULL;
+	uint32_t addr = 0;
+	uint32_t cmd = 0;
+	uint32_t length = 0;
+	bool repeat = false;
+	RingbufHandle_t rb = NULL;
+	rmt_item32_t *items = NULL;
 
 	ESP_LOGI(pcTaskGetTaskName(0), "Start");
-    rmt_config_t rmt_rx_config = RMT_DEFAULT_CONFIG_RX(CONFIG_RMT_RX_GPIO, ir_rx_channel);
-    rmt_config(&rmt_rx_config);
-    rmt_driver_install(ir_rx_channel, 1000, 0);
-    ir_parser_config_t ir_parser_config = IR_PARSER_DEFAULT_CONFIG((ir_dev_t)ir_rx_channel);
-    ir_parser_t *ir_parser = NULL;
+	rmt_config_t rmt_rx_config = RMT_DEFAULT_CONFIG_RX(CONFIG_RMT_RX_GPIO, ir_rx_channel);
+	rmt_config(&rmt_rx_config);
+	rmt_driver_install(ir_rx_channel, 1000, 0);
+	ir_parser_config_t ir_parser_config = IR_PARSER_DEFAULT_CONFIG((ir_dev_t)ir_rx_channel);
+	ir_parser_t *ir_parser = NULL;
 #if CONFIG_IR_PROTOCOL_NEC
-    ir_parser = ir_parser_rmt_new_nec(&ir_parser_config);
+	ir_parser = ir_parser_rmt_new_nec(&ir_parser_config);
 #elif CONFIG_IR_PROTOCOL_RC5
-    ir_parser = ir_parser_rmt_new_rc5(&ir_parser_config);
+	ir_parser = ir_parser_rmt_new_rc5(&ir_parser_config);
 #endif
 
-    //get RMT RX ringbuffer
-    rmt_get_ringbuf_handle(ir_rx_channel, &rb);
+	//get RMT RX ringbuffer
+	rmt_get_ringbuf_handle(ir_rx_channel, &rb);
 	configASSERT( rb );
-    // Start receive
-    rmt_rx_start(ir_rx_channel, true);
-    while (rb) {
-        items = (rmt_item32_t *) xRingbufferReceive(rb, &length, 1000);
-        if (items) {
-            length /= 4; // one RMT = 4 Bytes
-            if (ir_parser->input(ir_parser, items, length) == ESP_OK) {
-                if (ir_parser->get_scan_code(ir_parser, &addr, &cmd, &repeat) == ESP_OK) {
-                    ESP_LOGI(pcTaskGetTaskName(0), "Scan Code %s --- addr: 0x%04x cmd: 0x%04x", repeat ? "(repeat)" : "", addr, cmd);
+	// Start receive
+	rmt_rx_start(ir_rx_channel, true);
+	while (rb) {
+		items = (rmt_item32_t *) xRingbufferReceive(rb, &length, 1000);
+		if (items) {
+			length /= 4; // one RMT = 4 Bytes
+			if (ir_parser->input(ir_parser, items, length) == ESP_OK) {
+				if (ir_parser->get_scan_code(ir_parser, &addr, &cmd, &repeat) == ESP_OK) {
+					ESP_LOGI(pcTaskGetTaskName(0), "Scan Code %s --- addr: 0x%04x cmd: 0x%04x", repeat ? "(repeat)" : "", addr, cmd);
 					if (addr == CONFIG_IR_ADDR_ON && cmd == CONFIG_IR_CMD_ON) {
 						ESP_LOGI(pcTaskGetTaskName(0), "play start");
 						xEventGroupSetBits( xEventGroup, PLAY_START_BIT );
@@ -229,20 +280,20 @@ static void ir_rx_task(void *arg)
 						ESP_LOGI(pcTaskGetTaskName(0), "play stop");
 						xEventGroupClearBits( xEventGroup, PLAY_START_BIT );
 					}
-                }
-            }
-            //after parsing the data, return spaces to ringbuffer.
-            vRingbufferReturnItem(rb, (void *) items);
-        } else {
+				}
+			}
+			//after parsing the data, return spaces to ringbuffer.
+			vRingbufferReturnItem(rb, (void *) items);
+		} else {
 			ESP_LOGD(pcTaskGetTaskName(0), "xRingbufferReceive is NULL");
-            //break;
-        }
-    }
+			//break;
+		}
+	}
 
 	// never reach here
-    ir_parser->del(ir_parser);
-    rmt_driver_uninstall(ir_rx_channel);
-    vTaskDelete(NULL);
+	ir_parser->del(ir_parser);
+	rmt_driver_uninstall(ir_rx_channel);
+	vTaskDelete(NULL);
 }
 #endif
 
@@ -848,8 +899,17 @@ void app_main(void)
 	configASSERT( xEventGroup );
 
 	xTaskCreate(&vs1053_task, "VS1053", 1024*8, NULL, 6, NULL);
-	xTaskCreate(&console_task, "CONSOLE", 1024*4, NULL, 3, NULL);
 	xTaskCreate(&client_task, "CLIENT", 1024*10, NULL, 5, NULL);
+
+#if CONFIG_METADATA_CONSOLE
+	xTaskCreate(&console_task, "CONSOLE", 1024*4, NULL, 3, NULL);
+#endif
+
+#if CONFIG_METADATA_BROADCAST
+	xTaskCreate(&udp_task, "CONSOLE", 1024*4, NULL, 3, NULL);
+#endif
+
+
 #if CONFIG_IR_PROTOCOL_NONE
 	ESP_LOGI(TAG, "Your remote is NONE");
 	xEventGroupSetBits( xEventGroup, PLAY_START_BIT );

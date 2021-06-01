@@ -11,7 +11,20 @@ VS1003 or VS1053 Development Board.
 The performance of VS1003 (Blue Board) and VS1053 is completely different.   
 __VS1003 (Blue Board) is not fast.__   
 
-# Configure   
+# Instalation
+```
+git clone https://github.com/nopnop2002/esp-idf-vs1053
+cd esp-idf-vs1053
+idf.py set-target esp32
+idf.py menuconfig
+idf.py flash monitor
+```
+
+![config-1](https://user-images.githubusercontent.com/6020549/76663983-3415df00-65c6-11ea-93db-9ec83e2601df.jpg)
+
+![config-app](https://user-images.githubusercontent.com/6020549/120302636-11760000-c309-11eb-80c7-7b8ec9c5f87e.jpg)
+
+# Configuration   
 You have to set this config value with menuconfig.   
 
 - CONFIG_ESP_WIFI_SSID   
@@ -34,22 +47,10 @@ Volume of VS1003.
 Play [this internet radio](https://somafm.com/player/#/now-playing/seventies).   
 - CONFIG_SERVER_PORT   
 - CONFIG_SERVER_PATH   
-- CONFIG_IR_PROTOCOL(*)   
-
-__(*)__:See Infrared operation section   
-
-
-```
-git clone https://github.com/nopnop2002/esp-idf-vs1053
-cd esp-idf-vs1053
-idf.py set-target esp32
-idf.py menuconfig
-idf.py flash monitor
-```
-
-![config-1](https://user-images.githubusercontent.com/6020549/76663983-3415df00-65c6-11ea-93db-9ec83e2601df.jpg)
-
-![config-2](https://user-images.githubusercontent.com/6020549/79027555-a4b11b00-7bc7-11ea-8c06-ed4a468e66da.jpg)
+- CONFIG_METADATA_OUTPUT
+See Display Metadata section.   
+- CONFIG_IR_PROTOCOL   
+See Infrared operation section.   
 
 
 # Wireing  
@@ -155,6 +156,10 @@ I (17397) VS1053:   F -     0
 With the VS1003, radio stations larger than 128K bit rate cannot be played for a long time.   
 VS1003 and VS1053 have completely different performance.   
 Click [here](https://github.com/nopnop2002/esp-idf-vs1053/issues/2) for details.
+
+---
+
+# Metadata output   
 
 ---
 
@@ -266,7 +271,15 @@ Because VS1053 occupies SPI.
 
 __My recommendation:__   
 My recommendation is to transfer the detected metadata to another ESP on the network and view it on another ESP.   
-The simplest implementation is UDP Broadcast.
+The simplest implementation is UDP Broadcast.   
+You can select Metadata output destination using menuconfig.   
+
+![config-metadata-1](https://user-images.githubusercontent.com/6020549/120303382-bf81aa00-c309-11eb-9bdf-d254a27c172a.jpg)
+![config-metadata-2](https://user-images.githubusercontent.com/6020549/120303386-c0b2d700-c309-11eb-82cb-73076df3c877.jpg)
+
+You can use udp_receive.py receiving metadata.   
+
+![udp-receive](https://user-images.githubusercontent.com/6020549/120304206-8ac22280-c30a-11eb-9d81-f9a09ba43db1.jpg)
 
 ---
 

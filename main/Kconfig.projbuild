@@ -80,6 +80,35 @@ menu "Application Configuration"
 		help
 			Path of radio station.
 
+	choice METADATA_OUTPUT
+		prompt "Metadata output destination"
+		default METADATA_CONSOLE
+		help
+			Choose the Metadata output destination.
+
+		config METADATA_NONE
+			bool "Metadata is not output anywhere"
+			help
+				Metadata is not output anywhere.
+
+		config METADATA_CONSOLE
+			bool "Metadata is output to the console"
+			help
+				Metadata is output to the console.
+
+		config METADATA_BROADCAST
+			bool "Metadata is output to the UDP Broadcast"
+			help
+				Metadata is output to the UDP Broadcast.
+	endchoice
+
+	config UDP_PORT
+		depends on METADATA_BROADCAST
+		int "Port number to UDP broadcast"
+		default 9876
+		help
+			Port number of UDP Broadcast.
+
 	choice IR_PROTOCOL
 		prompt "Infrared Protocol"
 		default IR_PROTOCOL_NONE
@@ -105,40 +134,40 @@ menu "Application Configuration"
 
 	endchoice
 
-    config RMT_RX_GPIO
+	config RMT_RX_GPIO
 		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-        int "RMT RX GPIO"
+		int "RMT RX GPIO"
 		range 1 34
-        default 34
-        help
-            Set the GPIO number used for receiving the RMT signal.
+		default 34
+		help
+			Set the GPIO number used for receiving the RMT signal.
 
-    config IR_ADDR_ON
+	config IR_ADDR_ON
 		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-        hex "Remote ADDR to start PLAY"
-        default 0xff00
-        help
+		hex "Remote ADDR to start PLAY"
+		default 0xff00
+		help
 			Set IR address of play start.
 
-    config IR_CMD_ON
+	config IR_CMD_ON
 		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-        hex "Remote CMD to start PLAY"
-        default 0x1111
-        help
+		hex "Remote CMD to start PLAY"
+		default 0x1111
+		help
 			Set IR command of play start.
 
-    config IR_ADDR_OFF
+	config IR_ADDR_OFF
 		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-        hex "Remote ADDR to stop PLAY"
-        default 0xff00
-        help
+		hex "Remote ADDR to stop PLAY"
+		default 0xff00
+		help
 			Set IR address of play stop.
 
-    config IR_CMD_OFF
+	config IR_CMD_OFF
 		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-        hex "Remote CMD to stop PLAY"
-        default 0x2222
-        help
+		hex "Remote CMD to stop PLAY"
+		default 0x2222
+		help
 			Set IR command of play stop.
 
 
