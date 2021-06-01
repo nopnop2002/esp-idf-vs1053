@@ -1,5 +1,6 @@
 # esp-idf-vs1053
 VS1053 Driver for esp-idf.    
+You can listen Internet radio.   
 I ported from from [here](https://github.com/baldram/ESP_VS1053_Library).
 
 # Software requirements
@@ -10,15 +11,25 @@ VS1003 or VS1053 Development Board.
 
 # Configure   
 You have to set this config value with menuconfig.   
+
 - CONFIG_ESP_WIFI_SSID   
+SSID of your wifi.
 - CONFIG_ESP_WIFI_PASSWORD   
+PASSWORD of your wifi.
 - CONFIG_ESP_MAXIMUM_RETRY   
+Maximum number of retries when connecting to wifi.
 - CONFIG_GPIO_CS   
+GPIO for XCS of VS1003.
 - CONFIG_GPIO_DCS   
+GPIO for XDCS of VS1003.
 - CONFIG_GPIO_DREQ   
+GPIO for XDREQ of VS1003.
 - CONFIG_GPIO_RESET   
+GPIO for XRST of VS1003.Normally use the EN pin.
 - CONFIG_VOLUME   
+Volume of VS1003.
 - CONFIG_SERVER_HOST   
+Play [this internet radio](https://somafm.com/player/#/now-playing/seventies).   
 - CONFIG_SERVER_PORT   
 - CONFIG_SERVER_PATH   
 - CONFIG_IR_PROTOCOL(*)   
