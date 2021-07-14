@@ -262,8 +262,8 @@ https://github.com/UncleRus/esp-idf-lib/tree/master/examples/hd44780_i2c
 https://github.com/nopnop2002/esp-idf-ssd1306
 
 __Note:__   
-If you use the SPI interface for this purpose, you need to use a __VSPI_HOST device__.   
-Because VS1053 occupies HSPI_HOST device.   
+If you use the SPI interface for this purpose, you need to use a __VSPI_HOST(SPI3_HOST) device__.   
+Because VS1053 occupies HSPI_HOST(SPI2_HOST) device.   
 
 __My recommendation:__   
 My recommendation is to transfer the detected metadata to another ESP on the network and view it on another ESP.   
