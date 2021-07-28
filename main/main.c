@@ -844,6 +844,7 @@ icy-metaint:16000
 			// Adjust the buffer size according to the free size of xRingbuffer.
 			size_t freeSize = xRingbufferGetCurFreeSize(xRingbuffer2);
 			meta.ringbufferSize = MAX_HTTP_RECV_BUFFER;
+			ESP_LOGD(pcTaskGetTaskName(0), "freeSize=%d MAX_HTTP_RECV_BUFFER*2=%d", freeSize, MAX_HTTP_RECV_BUFFER*2);
 			if (freeSize < MAX_HTTP_RECV_BUFFER*2) {
 				meta.ringbufferSize = MIN_HTTP_RECV_BUFFER;
 				vTaskDelay(1);
@@ -898,8 +899,8 @@ void app_main(void)
 	xEventGroup = xEventGroupCreate();
 	configASSERT( xEventGroup );
 
-	xTaskCreate(&vs1053_task, "VS1053", 1024*8, NULL, 6, NULL);
-	xTaskCreate(&client_task, "CLIENT", 1024*10, NULL, 5, NULL);
+	xTaskCreate(&vs1053_task, "VS1053", 1024*8, NULL, 4, NULL);
+	xTaskCreate(&client_task, "CLIENT", 1024*10, NULL, 4, NULL);
 
 #if CONFIG_METADATA_CONSOLE
 	xTaskCreate(&console_task, "CONSOLE", 1024*4, NULL, 3, NULL);
@@ -916,11 +917,11 @@ void app_main(void)
 #else
 #if CONFIG_IR_PROTOCOL_NEC 
 	ESP_LOGI(TAG, "Your remote is NEC");
-	xTaskCreate(&ir_rx_task, "NEC", 1024*2, NULL, 5, NULL);
+	xTaskCreate(&ir_rx_task, "NEC", 1024*2, NULL, 3, NULL);
 #endif
 #if CONFIG_IR_PROTOCOL_RC5
 	ESP_LOGI(TAG, "Your remote is RC5");
-	xTaskCreate(&ir_rx_task, "RC5", 1024*2, NULL, 5, NULL);
+	xTaskCreate(&ir_rx_task, "RC5", 1024*2, NULL, 3, NULL);
 #endif
 	ESP_LOGI(TAG, "CONFIG_ADDR_ON=0x%x", CONFIG_IR_ADDR_ON);
 	ESP_LOGI(TAG, "CONFIG_CMD_ON=0x%x", CONFIG_IR_CMD_ON);

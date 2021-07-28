@@ -20,19 +20,24 @@ idf.py menuconfig
 idf.py flash monitor
 ```
 
-![config-1](https://user-images.githubusercontent.com/6020549/76663983-3415df00-65c6-11ea-93db-9ec83e2601df.jpg)
+![config-main](https://user-images.githubusercontent.com/6020549/127245065-079abcc4-a94e-4590-a0b3-c796736e3b17.jpg)
+![config-app](https://user-images.githubusercontent.com/6020549/127245074-f738ee65-2dfe-4b62-86da-64ac56176f8d.jpg)
 
-![config-app](https://user-images.githubusercontent.com/6020549/120302636-11760000-c309-11eb-80c7-7b8ec9c5f87e.jpg)
 
 # Configuration   
 You have to set this config value with menuconfig.   
 
+## WiFi Setting   
 - CONFIG_ESP_WIFI_SSID   
 SSID of your wifi.
 - CONFIG_ESP_WIFI_PASSWORD   
 PASSWORD of your wifi.
 - CONFIG_ESP_MAXIMUM_RETRY   
 Maximum number of retries when connecting to wifi.
+
+![config-wifi](https://user-images.githubusercontent.com/6020549/127245171-de3036c4-505b-4915-9f3f-774fe3bfa5b0.jpg)
+
+## VS1053 Setting   
 - CONFIG_GPIO_CS   
 GPIO for XCS of VS1003.
 - CONFIG_GPIO_DCS   
@@ -43,14 +48,26 @@ GPIO for XDREQ of VS1003.
 GPIO for XRST of VS1003.Normally use the EN pin.
 - CONFIG_VOLUME   
 Volume of VS1003.
+
+![config-vs1053](https://user-images.githubusercontent.com/6020549/127245221-01499f85-cb86-49e0-af16-9468ff25b5d4.jpg)
+
+## Radio Station Setting   
 - CONFIG_SERVER_HOST   
 Play [this internet radio](https://somafm.com/player/#/now-playing/seventies).   
 - CONFIG_SERVER_PORT   
 - CONFIG_SERVER_PATH   
 - CONFIG_METADATA_OUTPUT   
 See Display Metadata section.   
+
+![config-radio-1](https://user-images.githubusercontent.com/6020549/127245287-34956f6e-cdbe-497e-954e-fdbb31ffb5a3.jpg)
+![config-radio-2](https://user-images.githubusercontent.com/6020549/127245291-03a66881-38b4-400a-9db3-f48566f95e4c.jpg)
+
+
+## Remote Setting   
 - CONFIG_IR_PROTOCOL   
 See Infrared operation section.   
+
+![config-ir](https://user-images.githubusercontent.com/6020549/127245359-b41bad59-4aa9-42fa-8e7b-b62a9af0eaf1.jpg)
 
 
 # Wireing  
@@ -200,9 +217,8 @@ This is typical wireing.
 - Remote ADDR & CMD to start PLAY   
 - Remote ADDR & CMD to stop PLAY   
 
-![config-3](https://user-images.githubusercontent.com/6020549/79027558-a7137500-7bc7-11ea-8fd8-0b450c3eff06.jpg)
-
-![config-4](https://user-images.githubusercontent.com/6020549/79028882-dc6e9180-7bcc-11ea-8530-b5ea732729e0.jpg)
+![config-ir-nec](https://user-images.githubusercontent.com/6020549/127245455-29e46af9-3a27-4d58-85d4-a6e1a2635dc9.jpg)
+![config-ir-rc5](https://user-images.githubusercontent.com/6020549/127245460-79292e31-a232-4315-99c1-286b06ecb7cb.jpg)
 
 ---
 

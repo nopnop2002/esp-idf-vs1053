@@ -1,175 +1,191 @@
 menu "Application Configuration"
 
-	config ESP_WIFI_SSID
-		string "WiFi SSID"
-		default "myssid"
-		help
-			SSID (network name) for the example to connect to.
+	menu "WiFi Setting"
 
-	config ESP_WIFI_PASSWORD
-		string "WiFi Password"
-		default "mypassword"
-		help
-			WiFi password (WPA or WPA2) for the example to use.
+		config ESP_WIFI_SSID
+			string "WiFi SSID"
+			default "myssid"
+			help
+				SSID (network name) to connect to.
+
+		config ESP_WIFI_PASSWORD
+			string "WiFi Password"
+			default "mypassword"
+			help
+				WiFi password (WPA or WPA2) to connect to.
 
 	config ESP_MAXIMUM_RETRY
-		int "Maximum retry"
-		default 5
-		help
-			Set the Maximum retry to avoid station reconnecting to the AP unlimited when the AP is really inexistent.
-
-	config GPIO_CS
-		int "CS GPIO number"
-		range 1 34
-		default 5
-		help
-			GPIO number (IOxx) to SPI CS.
-			Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used to CS.
-			GPIOs 35-39 are input-only so cannot be used as outputs.
-
-	config GPIO_DCS
-		int "DCS GPIO number"
-		range 1 34
-		default 16
-		help
-			GPIO number (IOxx) to SPI DCS.
-			Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used to DCS.
-			GPIOs 35-39 are input-only so cannot be used as outputs.
-
-	config GPIO_DREQ
-		int "DREQ GPIO number"
-		range 1 39
-		default 4
-		help
-			GPIO number (IOxx) to SPI DREQ.
-			Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used to DREQ.
-			GPIOs 35-39 are input-only so cannot be used as outputs.
-
-	config GPIO_RESET
-		int "RESET GPIO number"
-		range -1 39
-		default -1
-		help
-			GPIO number (IOxx) to RESET.
-			-1 to use the hardware EN pin.
-			Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used to DREQ.
-			GPIOs 35-39 are input-only so cannot be used as outputs.
-
-	config VOLUME
-		int "VS1053 Volume"
-		range 50 100
-		default 90
-		help
-			Volume value of VS1053.
-
-	config SERVER_HOST
-		string "Hostname of radio station"
-		default "ice2.somafm.com"
-		help
-			Hostname of radio station.
-
-	config SERVER_PORT
-		int "Port number of radio station"
-		default 80
-		help
-			Port number of radio station.
-
-	config SERVER_PATH
-		string "Path of radio station"
-		default "/seventies-128-mp3"
-		help
-			Path of radio station.
-
-	choice METADATA_OUTPUT
-		prompt "Metadata output destination"
-		default METADATA_CONSOLE
-		help
-			Choose the Metadata output destination.
-
-		config METADATA_NONE
-			bool "Metadata is not output anywhere"
+			int "Maximum retry"
+			default 5
 			help
-				Metadata is not output anywhere.
+				Set the Maximum retry to avoid station reconnecting to the AP unlimited when the AP is really inexistent.
 
-		config METADATA_CONSOLE
-			bool "Metadata is output to the console"
+	endmenu
+
+	menu "VS1053 Setting"
+
+		config GPIO_CS
+			int "CS GPIO number"
+			range 1 34
+			default 5
 			help
-				Metadata is output to the console.
+				GPIO number (IOxx) to SPI CS.
+				Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used to CS.
+				GPIOs 35-39 are input-only so cannot be used as outputs.
 
-		config METADATA_BROADCAST
-			bool "Metadata is output to the UDP Broadcast"
+		config GPIO_DCS
+			int "DCS GPIO number"
+			range 1 34
+			default 16
 			help
-				Metadata is output to the UDP Broadcast.
-	endchoice
+				GPIO number (IOxx) to SPI DCS.
+				Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used to DCS.
+				GPIOs 35-39 are input-only so cannot be used as outputs.
 
-	config UDP_PORT
-		depends on METADATA_BROADCAST
-		int "Port number to UDP broadcast"
-		default 9876
-		help
-			Port number of UDP Broadcast.
-
-	choice IR_PROTOCOL
-		prompt "Infrared Protocol"
-		default IR_PROTOCOL_NONE
-		help
-			Choose the IR protocol used in the example.
-
-		config IR_PROTOCOL_NONE
-			bool "NONE"
+		config GPIO_DREQ
+			int "DREQ GPIO number"
+			range 1 39
+			default 4
 			help
-				Not use remote control.
+				GPIO number (IOxx) to SPI DREQ.
+				Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used to DREQ.
+				GPIOs 35-39 are input-only so cannot be used as outputs.
 
-		config IR_PROTOCOL_NEC
-			bool "NEC"
+		config GPIO_RESET
+			int "RESET GPIO number"
+			range -1 39
+			default -1
 			help
-				NEC is a kind of Pulse Distance Protocol.
-				It uses ASK modulation and pulse distance encoding with a carrier frequency of 38 kHz.
+				GPIO number (IOxx) to RESET.
+				-1 to use the hardware EN pin.
+				Some GPIOs are used for other purposes (flash connections, etc.) and cannot be used to DREQ.
+				GPIOs 35-39 are input-only so cannot be used as outputs.
 
-		config IR_PROTOCOL_RC5
-			bool "RC5"
+		config VOLUME
+			int "VS1053 Volume"
+			range 50 100
+			default 90
 			help
-				The RC5 protocol was introduced by Philips.
-				It uses ASK modulation and Manchester encoding with carrier frequency fixed at 36 kHz.
+				Volume value of VS1053.
 
-	endchoice
+	endmenu
 
-	config RMT_RX_GPIO
-		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-		int "RMT RX GPIO"
-		range 1 34
-		default 34
-		help
-			Set the GPIO number used for receiving the RMT signal.
+	menu "RADIO Setting"
 
-	config IR_ADDR_ON
-		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-		hex "Remote ADDR to start PLAY"
-		default 0xff00
-		help
-			Set IR address of play start.
+		config SERVER_HOST
+			string "Hostname of radio station"
+			default "ice2.somafm.com"
+			help
+				Hostname of radio station.
 
-	config IR_CMD_ON
-		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-		hex "Remote CMD to start PLAY"
-		default 0x1111
-		help
-			Set IR command of play start.
+		config SERVER_PORT
+			int "Port number of radio station"
+			default 80
+			help
+				Port number of radio station.
 
-	config IR_ADDR_OFF
-		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-		hex "Remote ADDR to stop PLAY"
-		default 0xff00
-		help
-			Set IR address of play stop.
+		config SERVER_PATH
+			string "Path of radio station"
+			default "/seventies-128-mp3"
+			help
+				Path of radio station.
 
-	config IR_CMD_OFF
-		depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
-		hex "Remote CMD to stop PLAY"
-		default 0x2222
-		help
-			Set IR command of play stop.
+		choice METADATA_OUTPUT
+			prompt "Metadata output destination"
+			default METADATA_CONSOLE
+			help
+				Choose the Metadata output destination.
 
+			config METADATA_NONE
+				bool "Metadata is not output anywhere"
+				help
+					Metadata is not output anywhere.
+
+			config METADATA_CONSOLE
+				bool "Metadata is output to the console"
+				help
+					Metadata is output to the console.
+
+			config METADATA_BROADCAST
+				bool "Metadata is output to the UDP Broadcast"
+				help
+					Metadata is output to the UDP Broadcast.
+
+		endchoice
+
+		config UDP_PORT
+			depends on METADATA_BROADCAST
+			int "Port number to UDP broadcast"
+			default 9876
+			help
+				Port number of UDP Broadcast.
+
+	endmenu
+
+	menu "IR Setting"
+
+		choice IR_PROTOCOL
+			prompt "Infrared Protocol"
+			default IR_PROTOCOL_NONE
+			help
+				Choose the IR protocol used in the example.
+
+			config IR_PROTOCOL_NONE
+				bool "NONE"
+				help
+					Not use remote control.
+
+			config IR_PROTOCOL_NEC
+				bool "NEC"
+				help
+					NEC is a kind of Pulse Distance Protocol.
+					It uses ASK modulation and pulse distance encoding with a carrier frequency of 38 kHz.
+
+			config IR_PROTOCOL_RC5
+				bool "RC5"
+				help
+					The RC5 protocol was introduced by Philips.
+					It uses ASK modulation and Manchester encoding with carrier frequency fixed at 36 kHz.
+
+		endchoice
+
+		config RMT_RX_GPIO
+			depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
+			int "RMT RX GPIO"
+			range 1 34
+			default 34
+			help
+				Set the GPIO number used for receiving the RMT signal.
+
+		config IR_ADDR_ON
+			depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
+			hex "Remote ADDR to start PLAY"
+			default 0xff00
+			help
+				Set IR address of play start.
+
+		config IR_CMD_ON
+			depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
+			hex "Remote CMD to start PLAY"
+			default 0x1111
+			help
+				Set IR command of play start.
+
+		config IR_ADDR_OFF
+			depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
+			hex "Remote ADDR to stop PLAY"
+			default 0xff00
+			help
+				Set IR address of play stop.
+
+		config IR_CMD_OFF
+			depends on IR_PROTOCOL_NEC || IR_PROTOCOL_RC5
+			hex "Remote CMD to stop PLAY"
+			default 0x2222
+			help
+				Set IR command of play stop.
+
+	endmenu
 
 endmenu
 
