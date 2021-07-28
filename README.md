@@ -60,7 +60,6 @@ Play [this internet radio](https://somafm.com/player/#/now-playing/seventies).
 See Display Metadata section.   
 
 ![config-radio-1](https://user-images.githubusercontent.com/6020549/127245287-34956f6e-cdbe-497e-954e-fdbb31ffb5a3.jpg)
-![config-radio-2](https://user-images.githubusercontent.com/6020549/127245291-03a66881-38b4-400a-9db3-f48566f95e4c.jpg)
 
 
 ## Remote Setting   
@@ -285,8 +284,7 @@ __My recommendation:__
 My recommendation is to transfer the detected metadata to another ESP on the network and view it on another ESP.   
 The simplest implementation is UDP Broadcast.   
 You can select Metadata output destination using menuconfig.   
-![config-metadata-1](https://user-images.githubusercontent.com/6020549/120303382-bf81aa00-c309-11eb-9bdf-d254a27c172a.jpg)
-![config-metadata-2](https://user-images.githubusercontent.com/6020549/120303386-c0b2d700-c309-11eb-82cb-73076df3c877.jpg)
+![config-radio-2](https://user-images.githubusercontent.com/6020549/127245291-03a66881-38b4-400a-9db3-f48566f95e4c.jpg)
 
 You can use udp_receive.py to receive Broadcast metadata.   
 UDP broadcast data can be received by ESP32/ESP8266.   
