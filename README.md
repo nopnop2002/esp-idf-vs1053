@@ -62,7 +62,7 @@ See Display Metadata section.
 ![config-radio-1](https://user-images.githubusercontent.com/6020549/127245287-34956f6e-cdbe-497e-954e-fdbb31ffb5a3.jpg)
 
 
-## Remote Setting(Optional)   
+## Infrared Setting(Optional)   
 See Infrared operation section.   
 
 ![config-ir](https://user-images.githubusercontent.com/6020549/127245359-b41bad59-4aa9-42fa-8e7b-b62a9af0eaf1.jpg)
