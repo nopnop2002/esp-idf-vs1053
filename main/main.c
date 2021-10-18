@@ -29,15 +29,6 @@
 
 #include "vs1053.h"
 
-/* The examples use WiFi configuration that you can set via project configuration menu
-
-   If you'd rather not, just change the below entries to strings with
-   the config you want - ie #define EXAMPLE_ESP_WIFI_SSID "mywifissid"
-*/
-#define EXAMPLE_ESP_WIFI_SSID	   CONFIG_ESP_WIFI_SSID
-#define EXAMPLE_ESP_WIFI_PASS	   CONFIG_ESP_WIFI_PASSWORD
-#define EXAMPLE_ESP_MAXIMUM_RETRY  CONFIG_ESP_MAXIMUM_RETRY
-
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
 
@@ -55,8 +46,15 @@ static const char *TAG = "MAIN";
 
 static int s_retry_num = 0;
 
-RingbufHandle_t xRingbuffer1;
-RingbufHandle_t xRingbuffer2;
+RingbufHandle_t xRingbufferConsole;
+RingbufHandle_t xRingbufferBroadcast;
+RingbufHandle_t xRingbufferStream;
+
+#define xRingbufferConsoleSize 1024
+#define xRingbufferBroadcastSize 1024
+//The maximum item size is (pxRingbuffer-> xSize / 2) -8
+#define xRingbufferStreamSize 100016L
+
 EventGroupHandle_t xEventGroup;
 
 static void event_handler(void* arg, esp_event_base_t event_base,
@@ -65,7 +63,7 @@ static void event_handler(void* arg, esp_event_base_t event_base,
 	if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
 		esp_wifi_connect();
 	} else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-		if (s_retry_num < EXAMPLE_ESP_MAXIMUM_RETRY) {
+		if (s_retry_num < CONFIG_ESP_MAXIMUM_RETRY) {
 			esp_wifi_connect();
 			s_retry_num++;
 			ESP_LOGI(TAG, "retry to connect to the AP");
@@ -99,8 +97,8 @@ esp_err_t wifi_init_sta(void)
 
 	wifi_config_t wifi_config = {
 		.sta = {
-			.ssid = EXAMPLE_ESP_WIFI_SSID,
-			.password = EXAMPLE_ESP_WIFI_PASS
+			.ssid = CONFIG_ESP_WIFI_SSID,
+			.password = CONFIG_ESP_WIFI_PASSWORD
 		},
 	};
 	ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
@@ -122,11 +120,11 @@ esp_err_t wifi_init_sta(void)
 	 * happened. */
 	if (bits & WIFI_CONNECTED_BIT) {
 		ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-				 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+				 CONFIG_ESP_WIFI_SSID, CONFIG_ESP_WIFI_PASSWORD);
 		rcode = ESP_OK;
 	} else if (bits & WIFI_FAIL_BIT) {
 		ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-				 EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+				 CONFIG_ESP_WIFI_SSID, CONFIG_ESP_WIFI_PASSWORD);
 	} else {
 		ESP_LOGE(TAG, "UNEXPECTED EVENT");
 	}
@@ -139,52 +137,39 @@ esp_err_t wifi_init_sta(void)
 
 
 
-#define MAX_HTTP_RECV_BUFFER 512
-#define MIN_HTTP_RECV_BUFFER 32
+//#define MAX_HTTP_RECV_BUFFER 512
+//#define MIN_HTTP_RECV_BUFFER 32
+#define MAX_HTTP_RECV_BUFFER 1024
+#define MIN_HTTP_RECV_BUFFER 512
 
-#if CONFIG_METADATA_CONSOLE
+#if CONFIG_METADATA_CONSOLE || CONFIG_METADATA_BOTH
 // Console task
 static void console_task(void *pvParameters)
 {
 	ESP_LOGI(pcTaskGetTaskName(0), "Start");
-	char *buffer = malloc(MAX_HTTP_RECV_BUFFER + 1);
-	if (buffer == NULL) {
-		ESP_LOGE(pcTaskGetTaskName(0), "Cannot malloc http receive buffer");
-		while(1) { vTaskDelay(1); }
-	}
-
 	size_t item_size;
 	while (1) {
-		char *item = (char *)xRingbufferReceive(xRingbuffer1, &item_size, pdMS_TO_TICKS(1000));
+		char *item = (char *)xRingbufferReceive(xRingbufferConsole, &item_size, pdMS_TO_TICKS(1000));
 		if (item != NULL) {
 			ESP_LOGI(pcTaskGetTaskName(0), "xRingbufferReceive item_size=%d", item_size);
-			for (int i = 0; i < item_size; i++) {
-				buffer[i] = item[i];
-				buffer[i+1] = 0;
-			}
-			ESP_LOGI(pcTaskGetTaskName(0),"\n%s",buffer);
+			//Display metadata
+			ESP_LOGI(pcTaskGetTaskName(0),"\n%.*s",item_size, item);
 			//Return Item
-			vRingbufferReturnItem(xRingbuffer1, (void *)item);
+			vRingbufferReturnItem(xRingbufferConsole, (void *)item);
 		}
 	}
 
 	// Don't reach here
-	free(buffer);
 	ESP_LOGI(pcTaskGetTaskName(0), "Finish");
 	vTaskDelete(NULL);
 }
 #endif
 
-#if CONFIG_METADATA_BROADCAST
+#if CONFIG_METADATA_BROADCAST || CONFIG_METADATA_BOTH
 // UDP Bradcast Task
 static void udp_task(void *pvParameters)
 {
 	ESP_LOGI(pcTaskGetTaskName(0), "Start");
-	char *buffer = malloc(MAX_HTTP_RECV_BUFFER + 1);
-	if (buffer == NULL) {
-		ESP_LOGE(pcTaskGetTaskName(0), "Cannot malloc http receive buffer");
-		while(1) { vTaskDelay(1); }
-	}
 
 	/* set up address to sendto */
 	struct sockaddr_in addr;
@@ -201,25 +186,22 @@ static void udp_task(void *pvParameters)
 
 	size_t item_size;
 	while (1) {
-		char *item = (char *)xRingbufferReceive(xRingbuffer1, &item_size, pdMS_TO_TICKS(1000));
+		char *item = (char *)xRingbufferReceive(xRingbufferBroadcast, &item_size, pdMS_TO_TICKS(1000));
 		if (item != NULL) {
 			ESP_LOGI(pcTaskGetTaskName(0), "xRingbufferReceive item_size=%d", item_size);
-			for (int i = 0; i < item_size; i++) {
-				buffer[i] = item[i];
-				buffer[i+1] = 0;
-			}
-			ESP_LOGI(pcTaskGetTaskName(0),"\n%s",buffer);
-			ret = lwip_sendto(fd, buffer, item_size, 0, (struct sockaddr *)&addr, sizeof(addr));
+			ESP_LOGD(pcTaskGetTaskName(0),"\n%.*s",item_size, item);
+			ret = lwip_sendto(fd, item, item_size, 0, (struct sockaddr *)&addr, sizeof(addr));
 			LWIP_ASSERT("ret == item_size", ret == item_size);
 
 			//Return Item
-			vRingbufferReturnItem(xRingbuffer1, (void *)item);
+			vRingbufferReturnItem(xRingbufferBroadcast, (void *)item);
 		}
 	}
 
 	/* close socket. Don't reach here.*/
 	ret = lwip_close(fd);
 	LWIP_ASSERT("ret == 0", ret == 0);
+	ESP_LOGI(pcTaskGetTaskName(0), "Finish");
 	vTaskDelete( NULL );
 }
 #endif
@@ -327,16 +309,18 @@ static void vs1053_task(void *pvParameters)
 
 	size_t item_size;
 	while (1) {
-		char *item = (char *)xRingbufferReceive(xRingbuffer2, &item_size, pdMS_TO_TICKS(1000));
+		char *item = (char *)xRingbufferReceive(xRingbufferStream, &item_size, pdMS_TO_TICKS(1000));
+		//char *item = (char *)xRingbufferReceiveUpTo(xRingbufferStream, &item_size, pdMS_TO_TICKS(1000), MAX_HTTP_RECV_BUFFER);
 		if (item != NULL) {
-			ESP_LOGD(pcTaskGetTaskName(0), "xRingbufferReceive item_size=%d", item_size);
+			size_t freeSize = xRingbufferGetCurFreeSize(xRingbufferStream);
+			ESP_LOGD(pcTaskGetTaskName(0), "xRingbufferReceive freeSize=%d item_size=%d", freeSize, item_size);
 			for (int i = 0; i < item_size; i++) {
 				buffer[i] = item[i];
 				buffer[i+1] = 0;
 			}
 			playChunk(&dev, (uint8_t *)buffer, item_size);
 			//Return Item
-			vRingbufferReturnItem(xRingbuffer2, (void *)item);
+			vRingbufferReturnItem(xRingbufferStream, (void *)item);
 		} else {
 			//Failed to receive item
 			ESP_LOGD(pcTaskGetTaskName(0), "No receive item");
@@ -653,6 +637,8 @@ uint16_t getStreamUrl(METADATA_t * hoge) {
 #define SERVER_PATH "/seventies-128-mp3"
 */
 
+#define MAX_HTTP_SEND_BUFFER 512
+
 static void client_task(void *pvParameters)
 {
 	ESP_LOGI(pcTaskGetTaskName(0), "Start");
@@ -697,9 +683,9 @@ static void client_task(void *pvParameters)
 	ESP_LOGI(pcTaskGetTaskName(0), "Connect server");
 
 	// allocate buffer
-	char *buffer = malloc(MAX_HTTP_RECV_BUFFER + 1);
+	char *buffer = malloc(MAX_HTTP_SEND_BUFFER + 1);
 	if (buffer == NULL) {
-		ESP_LOGE(pcTaskGetTaskName(0), "Cannot malloc http receive buffer");
+		ESP_LOGE(pcTaskGetTaskName(0), "Cannot malloc http send buffer");
 		while(1) { vTaskDelay(1); }
 	}
 
@@ -792,11 +778,12 @@ icy-metaint:16000
 	meta.metadata = NULL;
 	meta.streamdataSize = 0;
 	meta.streamdata = malloc(MAX_HTTP_RECV_BUFFER);
-	meta.StreamTitle = NULL;
-	meta.StreamUrl = NULL;
 	if (meta.streamdata == NULL) {
 		ESP_LOGE(pcTaskGetTaskName(0), "streamdata malloc fail");
+		while(1) { vTaskDelay(1); }
 	}
+	meta.StreamTitle = NULL;
+	meta.StreamUrl = NULL;
 	meta.chunked = isTransferChunked(&header);
 	ESP_LOGI(pcTaskGetTaskName(0), "chunked=%d", meta.chunked);
 	meta.chunkCount = 0;
@@ -817,13 +804,19 @@ icy-metaint:16000
 
 		if (type == METADATA) {
 			ESP_LOGI(pcTaskGetTaskName(0),"metadataSize=%d metadata=[%s]",meta.metadataSize, meta.metadata); 
-			xRingbufferSend(xRingbuffer1, meta.metadata, meta.metadataSize, 0);
+#if CONFIG_METADATA_CONSOLE || CONFIG_METADATA_BOTH
+			xRingbufferSend(xRingbufferConsole, meta.metadata, meta.metadataSize, 0);
+#endif
+#if CONFIG_METADATA_BROADCAST || CONFIG_METADATA_BOTH
+			xRingbufferSend(xRingbufferBroadcast, meta.metadata, meta.metadataSize, 0);
+#endif
 		}
 
 		if (type == STREAMDATA) {
 			if (playStatus) {
-				ESP_LOGD(pcTaskGetTaskName(0),"streamdataSize=%d ringbufferSize=%d",meta.streamdataSize, meta.ringbufferSize);
-				xRingbufferSend(xRingbuffer2, meta.streamdata, meta.streamdataSize, 0);
+				//size_t freeSize = xRingbufferGetCurFreeSize(xRingbufferStream);
+				//ESP_LOGI(pcTaskGetTaskName(0),"freeSize=%d streamdataSize=%d ringbufferSize=%d",freeSize, meta.streamdataSize, meta.ringbufferSize);
+				xRingbufferSend(xRingbufferStream, meta.streamdata, meta.streamdataSize, 0);
 				playStatusCheck++;
 				if (playStatusCheck == 10) {
 					EventBits_t eventBit = xEventGroupGetBits(xEventGroup);
@@ -842,11 +835,14 @@ icy-metaint:16000
 			meta.streamdataSize = 0;
 
 			// Adjust the buffer size according to the free size of xRingbuffer.
-			size_t freeSize = xRingbufferGetCurFreeSize(xRingbuffer2);
+			size_t freeSize = xRingbufferGetCurFreeSize(xRingbufferStream);
 			meta.ringbufferSize = MAX_HTTP_RECV_BUFFER;
 			ESP_LOGD(pcTaskGetTaskName(0), "freeSize=%d MAX_HTTP_RECV_BUFFER*2=%d", freeSize, MAX_HTTP_RECV_BUFFER*2);
 			if (freeSize < MAX_HTTP_RECV_BUFFER*2) {
-				meta.ringbufferSize = MIN_HTTP_RECV_BUFFER;
+				//meta.ringbufferSize = MIN_HTTP_RECV_BUFFER;
+				meta.ringbufferSize = freeSize / 2;
+				//meta.ringbufferSize = 1;
+				ESP_LOGD(pcTaskGetTaskName(0), "freeSize=%d meta.ringbufferSize=%d", freeSize, meta.ringbufferSize);
 				vTaskDelay(1);
 			}
 #if 0
@@ -890,10 +886,14 @@ void app_main(void)
 	// https://docs.espressif.com/projects/esp-idf/en/latest/api-reference/system/mem_alloc.html
 	// Due to a technical limitation, the maximum statically allocated DRAM usage is 160KB.
 	// The remaining 160KB (for a total of 320KB of DRAM) can only be allocated at runtime as heap.
-	xRingbuffer1 = xRingbufferCreate(1000, RINGBUF_TYPE_NOSPLIT);
-	xRingbuffer2 = xRingbufferCreate(100000, RINGBUF_TYPE_NOSPLIT);
-	configASSERT( xRingbuffer1 );
-	configASSERT( xRingbuffer2 );
+	xRingbufferConsole = xRingbufferCreate(xRingbufferConsoleSize, RINGBUF_TYPE_NOSPLIT);
+	xRingbufferBroadcast = xRingbufferCreate(xRingbufferBroadcastSize, RINGBUF_TYPE_NOSPLIT);
+	xRingbufferStream = xRingbufferCreate(xRingbufferStreamSize, RINGBUF_TYPE_NOSPLIT);
+	configASSERT( xRingbufferConsole );
+	configASSERT( xRingbufferBroadcast );
+	configASSERT( xRingbufferStream );
+	size_t freeSize = xRingbufferGetCurFreeSize(xRingbufferStream);
+	ESP_LOGI(TAG, "freeSize=%d", freeSize);
 
 	// Create Eventgroup
 	xEventGroup = xEventGroupCreate();
@@ -902,12 +902,12 @@ void app_main(void)
 	xTaskCreate(&vs1053_task, "VS1053", 1024*8, NULL, 4, NULL);
 	xTaskCreate(&client_task, "CLIENT", 1024*10, NULL, 4, NULL);
 
-#if CONFIG_METADATA_CONSOLE
+#if CONFIG_METADATA_CONSOLE || CONFIG_METADATA_BOTH
 	xTaskCreate(&console_task, "CONSOLE", 1024*4, NULL, 3, NULL);
 #endif
 
-#if CONFIG_METADATA_BROADCAST
-	xTaskCreate(&udp_task, "CONSOLE", 1024*4, NULL, 3, NULL);
+#if CONFIG_METADATA_BROADCAST || CONFIG_METADATA_BOTH
+	xTaskCreate(&udp_task, "BROADCAST", 1024*4, NULL, 3, NULL);
 #endif
 
 

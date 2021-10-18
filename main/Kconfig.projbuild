@@ -111,10 +111,15 @@ menu "Application Configuration"
 				help
 					Metadata is output to the UDP Broadcast.
 
+			config METADATA_BOTH
+				bool "Metadata is output to the console & UDP Broadcast"
+				help
+					Metadata is output to the console & UDP Broadcast.
+
 		endchoice
 
 		config UDP_PORT
-			depends on METADATA_BROADCAST
+			depends on METADATA_BROADCAST || METADATA_BOTH
 			int "Port number to UDP broadcast"
 			default 9876
 			help

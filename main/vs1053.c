@@ -87,18 +87,21 @@ void spi_master_init(VS1053_t * dev, int16_t GPIO_CS, int16_t GPIO_DCS, int16_t 
 
 
 	ESP_LOGI(TAG, "GPIO_CS=%d",GPIO_CS);
-	gpio_pad_select_gpio( GPIO_CS );
+	//gpio_pad_select_gpio( GPIO_CS );
+	gpio_reset_pin( GPIO_CS );
 	gpio_set_direction( GPIO_CS, GPIO_MODE_OUTPUT );
 	gpio_set_level( GPIO_CS, 1 );
 
 	ESP_LOGI(TAG, "GPIO_DCS=%d",GPIO_DCS);
-	gpio_pad_select_gpio( GPIO_DCS );
+	//gpio_pad_select_gpio( GPIO_DCS );
+	gpio_reset_pin( GPIO_DCS );
 	gpio_set_direction( GPIO_DCS, GPIO_MODE_OUTPUT );
 	gpio_set_level( GPIO_DCS, 1 );
 
 	ESP_LOGI(TAG, "GPIO_RESET=%d",GPIO_RESET);
 	if ( GPIO_RESET >= 0 ) {
-		gpio_pad_select_gpio( GPIO_RESET );
+		//gpio_pad_select_gpio( GPIO_RESET );
+		gpio_reset_pin( GPIO_RESET );
 		gpio_set_direction( GPIO_RESET, GPIO_MODE_OUTPUT );
 		gpio_set_level( GPIO_RESET, 0 );
 		vTaskDelay( pdMS_TO_TICKS( 100 ) );
@@ -123,12 +126,12 @@ void spi_master_init(VS1053_t * dev, int16_t GPIO_CS, int16_t GPIO_DCS, int16_t 
 	int freq = 200000;
 	spi_device_interface_config_t devcfg={
 		.clock_speed_hz = freq,
-        .command_bits = 8,
-        .address_bits = 8,
-        .dummy_bits = 0,
-        .duty_cycle_pos = 0,
-        .cs_ena_pretrans = 0,
-        .cs_ena_posttrans = 1,
+		.command_bits = 8,
+		.address_bits = 8,
+		.dummy_bits = 0,
+		.duty_cycle_pos = 0,
+		.cs_ena_pretrans = 0,
+		.cs_ena_posttrans = 1,
 		.flags = SPI_DEVICE_NO_DUMMY,
 		.mode = 0,
 		.spics_io_num = -1,
@@ -162,8 +165,8 @@ void spi_master_init(VS1053_t * dev, int16_t GPIO_CS, int16_t GPIO_DCS, int16_t 
 		//freq =spi_cal_clock(APB_CLK_FREQ, 6100000, 128, NULL);
 		//ESP_LOGI(TAG,"VS1053 HighFreq: %d",freq);
 		devcfg.clock_speed_hz = 6000000;
-        devcfg.command_bits = 0;
-        devcfg.address_bits = 0;
+		devcfg.command_bits = 0;
+		devcfg.address_bits = 0;
 		ret = spi_bus_add_device( HSPI_HOST, &devcfg, &hvsspi);
 		ESP_LOGD(TAG, "spi_bus_add_device=%d",ret);
 		assert(ret==ESP_OK);

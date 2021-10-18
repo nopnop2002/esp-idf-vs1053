@@ -283,7 +283,10 @@ __My recommendation:__
 My recommendation is to transfer the detected metadata to another ESP on the network and view it on another ESP.   
 The simplest implementation is UDP Broadcast.   
 You can select Metadata output destination using menuconfig.   
-![config-radio-2](https://user-images.githubusercontent.com/6020549/127245291-03a66881-38b4-400a-9db3-f48566f95e4c.jpg)
+![config-radio-2](https://user-images.githubusercontent.com/6020549/137661606-14c7c6d3-a07f-4824-8dee-135bc30f684c.jpg)
+
+If you select UDP Broadcast, you can specify the UDP port number.   
+![config-radio-3](https://user-images.githubusercontent.com/6020549/137661607-41721c12-6ed7-4a66-a790-a68c166f9326.jpg)
 
 You can use udp_receive.py to receive Broadcast metadata.   
 UDP broadcast data can be received by ESP32/ESP8266.   
