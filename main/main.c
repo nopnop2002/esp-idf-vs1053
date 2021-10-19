@@ -12,6 +12,7 @@
 #include "freertos/task.h"
 #include "freertos/event_groups.h"
 #include "freertos/ringbuf.h"
+#include "freertos/message_buffer.h"
 #include "esp_system.h"
 #include "esp_wifi.h"
 #include "esp_event.h"
@@ -48,12 +49,11 @@ static int s_retry_num = 0;
 
 RingbufHandle_t xRingbufferConsole;
 RingbufHandle_t xRingbufferBroadcast;
-RingbufHandle_t xRingbufferStream;
+MessageBufferHandle_t xMessageBuffer;
 
 #define xRingbufferConsoleSize 1024
 #define xRingbufferBroadcastSize 1024
-//The maximum item size is (pxRingbuffer-> xSize / 2) -8
-#define xRingbufferStreamSize 100016L
+#define xMessageBufferSize 102400L
 
 EventGroupHandle_t xEventGroup;
 
@@ -138,9 +138,7 @@ esp_err_t wifi_init_sta(void)
 
 
 //#define MAX_HTTP_RECV_BUFFER 512
-//#define MIN_HTTP_RECV_BUFFER 32
 #define MAX_HTTP_RECV_BUFFER 1024
-#define MIN_HTTP_RECV_BUFFER 512
 
 #if CONFIG_METADATA_CONSOLE || CONFIG_METADATA_BOTH
 // Console task
@@ -297,7 +295,7 @@ static void vs1053_task(void *pvParameters)
 	ESP_LOGI(pcTaskGetTaskName(0), "CONFIG_VOLUME=%d", CONFIG_VOLUME);
 	setVolume(&dev, CONFIG_VOLUME);
 
-	char *buffer = malloc(MAX_HTTP_RECV_BUFFER + 1);
+	char *buffer = malloc(MAX_HTTP_RECV_BUFFER);
 	if (buffer == NULL) {
 		ESP_LOGE(pcTaskGetTaskName(0), "Cannot malloc http receive buffer");
 		while(1) { vTaskDelay(1); }
@@ -309,24 +307,12 @@ static void vs1053_task(void *pvParameters)
 
 	size_t item_size;
 	while (1) {
-		char *item = (char *)xRingbufferReceive(xRingbufferStream, &item_size, pdMS_TO_TICKS(1000));
-		//char *item = (char *)xRingbufferReceiveUpTo(xRingbufferStream, &item_size, pdMS_TO_TICKS(1000), MAX_HTTP_RECV_BUFFER);
-		if (item != NULL) {
-			size_t freeSize = xRingbufferGetCurFreeSize(xRingbufferStream);
-			ESP_LOGD(pcTaskGetTaskName(0), "xRingbufferReceive freeSize=%d item_size=%d", freeSize, item_size);
-			for (int i = 0; i < item_size; i++) {
-				buffer[i] = item[i];
-				buffer[i+1] = 0;
-			}
-			playChunk(&dev, (uint8_t *)buffer, item_size);
-			//Return Item
-			vRingbufferReturnItem(xRingbufferStream, (void *)item);
-		} else {
-			//Failed to receive item
-			ESP_LOGD(pcTaskGetTaskName(0), "No receive item");
-			vTaskDelay(1);
-		}
-		//vTaskDelay(10);
+		item_size = xMessageBufferReceive(xMessageBuffer, buffer, MAX_HTTP_RECV_BUFFER, portMAX_DELAY);
+#if 0
+		size_t space = xMessageBufferSpacesAvailable(xMessageBuffer);
+		ESP_LOGI(pcTaskGetTaskName(NULL), "space=%d", space);
+#endif
+		playChunk(&dev, (uint8_t *)buffer, item_size);
 	}
 
 	// never reach here
@@ -453,7 +439,7 @@ uint16_t readHeader(int fd, HEADER_t * header) {
 typedef struct {
 	size_t	currentSize;				// Total number of stream data
 	size_t	metaintSize;				// icy-Metaint bytes
-	size_t	ringbufferSize;				// Byte length of ringbuffer
+	size_t	bufferSize;					// Byte length of buffer
 	size_t	metadataSize;				// Byte length of metadata
 	char	*metadata;					// Buffer of metadata
 	size_t	streamdataSize;				// Byte length of stream data
@@ -483,7 +469,7 @@ int readStremDataWithMetadata(int fd, METADATA_t * hoge) {
 		if (hoge->metaintSize == 0) {
 			hoge->streamdata[hoge->streamdataSize] = buffer[0];
 			hoge->streamdataSize++;
-			if (hoge->streamdataSize == hoge->ringbufferSize) return STREAMDATA;
+			if (hoge->streamdataSize == hoge->bufferSize) return STREAMDATA;
 
 		} else {
 			if (hoge->currentSize == hoge->metaintSize) {
@@ -524,7 +510,7 @@ int readStremDataWithMetadata(int fd, METADATA_t * hoge) {
 				hoge->streamdata[hoge->streamdataSize] = buffer[0];
 				hoge->streamdataSize++;
 				hoge->currentSize++;
-				if (hoge->streamdataSize == hoge->ringbufferSize) return STREAMDATA;
+				if (hoge->streamdataSize == hoge->bufferSize) return STREAMDATA;
 			}
 
 		}
@@ -561,7 +547,7 @@ int readStremDataWithChunked(int fd, METADATA_t * hoge) {
 			hoge->chunkCount--;
 			hoge->streamdata[hoge->streamdataSize] = buffer[0];
 			hoge->streamdataSize++;
-			if (hoge->streamdataSize == hoge->ringbufferSize) return STREAMDATA;
+			if (hoge->streamdataSize == hoge->bufferSize) return STREAMDATA;
 		}
 	} // end while
 }
@@ -773,7 +759,7 @@ icy-metaint:16000
 	METADATA_t meta;
 	meta.currentSize = 0;
 	meta.metaintSize = metaint;
-	meta.ringbufferSize = MAX_HTTP_RECV_BUFFER;
+	meta.bufferSize = MAX_HTTP_RECV_BUFFER;
 	meta.metadataSize = 0;
 	meta.metadata = NULL;
 	meta.streamdataSize = 0;
@@ -814,9 +800,7 @@ icy-metaint:16000
 
 		if (type == STREAMDATA) {
 			if (playStatus) {
-				//size_t freeSize = xRingbufferGetCurFreeSize(xRingbufferStream);
-				//ESP_LOGI(pcTaskGetTaskName(0),"freeSize=%d streamdataSize=%d ringbufferSize=%d",freeSize, meta.streamdataSize, meta.ringbufferSize);
-				xRingbufferSend(xRingbufferStream, meta.streamdata, meta.streamdataSize, 0);
+				xMessageBufferSend(xMessageBuffer, meta.streamdata, meta.streamdataSize, portMAX_DELAY);
 				playStatusCheck++;
 				if (playStatusCheck == 10) {
 					EventBits_t eventBit = xEventGroupGetBits(xEventGroup);
@@ -834,22 +818,26 @@ icy-metaint:16000
 			}
 			meta.streamdataSize = 0;
 
-			// Adjust the buffer size according to the free size of xRingbuffer.
-			size_t freeSize = xRingbufferGetCurFreeSize(xRingbufferStream);
-			meta.ringbufferSize = MAX_HTTP_RECV_BUFFER;
+#if 0
+			// Adjust the read size according to the free size of xMessageBuffer.
+			size_t freeSize = xMessageBufferSpacesAvailable( xMessageBuffer );
+			meta.bufferSize = MAX_HTTP_RECV_BUFFER;
 			ESP_LOGD(pcTaskGetTaskName(0), "freeSize=%d MAX_HTTP_RECV_BUFFER*2=%d", freeSize, MAX_HTTP_RECV_BUFFER*2);
 			if (freeSize < MAX_HTTP_RECV_BUFFER*2) {
-				//meta.ringbufferSize = MIN_HTTP_RECV_BUFFER;
-				meta.ringbufferSize = freeSize / 2;
-				//meta.ringbufferSize = 1;
-				ESP_LOGD(pcTaskGetTaskName(0), "freeSize=%d meta.ringbufferSize=%d", freeSize, meta.ringbufferSize);
+				meta.bufferSize = freeSize / 2;
+				//meta.bufferSize = 1;
+				ESP_LOGI(pcTaskGetTaskName(0), "freeSize=%d meta.bufferSize=%d", freeSize, meta.bufferSize);
 				vTaskDelay(1);
 			}
-#if 0
-			meta.ringbufferSize = MIN_HTTP_RECV_BUFFER;
-			if (freeSize > MAX_HTTP_RECV_BUFFER*2) meta.ringbufferSize = MAX_HTTP_RECV_BUFFER;
 #endif
-			ESP_LOGD(pcTaskGetTaskName(0), "freeSize=%d ringbufferSize=%d", freeSize, meta.ringbufferSize);
+
+			// Wait for more than MAX_HTTP_RECV_BUFFER*2 bytes of free buffer space
+			while (1) {
+				size_t freeSize = xMessageBufferSpacesAvailable( xMessageBuffer );
+				if (freeSize > MAX_HTTP_RECV_BUFFER*2) break;
+				ESP_LOGD(pcTaskGetTaskName(0), "freeSize=%d MAX_HTTP_RECV_BUFFER*2=%d", freeSize, MAX_HTTP_RECV_BUFFER*2);
+				vTaskDelay(1);
+			}
 		}
 	}
 
@@ -888,18 +876,19 @@ void app_main(void)
 	// The remaining 160KB (for a total of 320KB of DRAM) can only be allocated at runtime as heap.
 	xRingbufferConsole = xRingbufferCreate(xRingbufferConsoleSize, RINGBUF_TYPE_NOSPLIT);
 	xRingbufferBroadcast = xRingbufferCreate(xRingbufferBroadcastSize, RINGBUF_TYPE_NOSPLIT);
-	xRingbufferStream = xRingbufferCreate(xRingbufferStreamSize, RINGBUF_TYPE_NOSPLIT);
+	xMessageBuffer = xMessageBufferCreate(xMessageBufferSize);
 	configASSERT( xRingbufferConsole );
 	configASSERT( xRingbufferBroadcast );
-	configASSERT( xRingbufferStream );
-	size_t freeSize = xRingbufferGetCurFreeSize(xRingbufferStream);
+	configASSERT( xMessageBuffer );
+	size_t freeSize = xMessageBufferSpacesAvailable( xMessageBuffer );
 	ESP_LOGI(TAG, "freeSize=%d", freeSize);
 
 	// Create Eventgroup
 	xEventGroup = xEventGroupCreate();
 	configASSERT( xEventGroup );
 
-	xTaskCreate(&vs1053_task, "VS1053", 1024*8, NULL, 4, NULL);
+	//xTaskCreate(&vs1053_task, "VS1053", 1024*8, NULL, 4, NULL);
+	xTaskCreate(&vs1053_task, "VS1053", 1024*8, NULL, 5, NULL);
 	xTaskCreate(&client_task, "CLIENT", 1024*10, NULL, 4, NULL);
 
 #if CONFIG_METADATA_CONSOLE || CONFIG_METADATA_BOTH
