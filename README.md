@@ -6,6 +6,7 @@ I ported from from [here](https://github.com/baldram/ESP_VS1053_Library).
 # Software requirements
 esp-idf ver4.3 or later.   
 Because this project uses MessageBuffer instead of RingBuffer.   
+MessageBuffer is 3 times faster than RingBuffer.   
 
 # Hardware requirements
 VS1003 or VS1053 Development Board.   
