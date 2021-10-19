@@ -4,7 +4,8 @@ You can listen Internet radio.
 I ported from from [here](https://github.com/baldram/ESP_VS1053_Library).
 
 # Software requirements
-esp-idf ver4.1 or later.   
+esp-idf ver4.3 or later.   
+Because this project uses MessageBuffer instead of RingBuffer.   
 
 # Hardware requirements
 VS1003 or VS1053 Development Board.   
