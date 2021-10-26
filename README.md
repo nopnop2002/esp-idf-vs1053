@@ -1,7 +1,7 @@
 # esp-idf-vs1053
 VS1053 Driver for esp-idf.    
 You can listen Internet radio.   
-I ported from from [here](https://github.com/baldram/ESP_VS1053_Library).
+I ported from [here](https://github.com/baldram/ESP_VS1053_Library).
 
 # Software requirements
 esp-idf ver4.3 or later.   
