@@ -46,7 +46,7 @@
 #include "vs1053.h"
 
 #define TAG "VS1053"
-#define    _DEBUG_ 0
+#define _DEBUG_ 0
 
 static const int GPIO_SCLK = 18;
 static const int GPIO_MISO = 19;
@@ -60,7 +60,8 @@ static const int GPIO_MOSI = 23;
 void delay(int ms) {
 	int _ms = ms + (portTICK_PERIOD_MS - 1);
 	TickType_t xTicksToDelay = _ms / portTICK_PERIOD_MS;
-	ESP_LOGD(TAG, "ms=%d _ms=%d portTICK_PERIOD_MS=%d xTicksToDelay=%d",ms,_ms,portTICK_PERIOD_MS,xTicksToDelay);
+	ESP_LOGD(TAG, "ms=%d _ms=%d",ms, _ms);
+	ESP_LOGD(TAG, "portTICK_PERIOD_MS=%"PRIu32" xTicksToDelay=%"PRIu32, portTICK_PERIOD_MS, xTicksToDelay);
 	vTaskDelay(xTicksToDelay);
 }
 
@@ -482,16 +483,18 @@ void softReset(VS1053_t * dev) {
 }
 
 void printDetails(VS1053_t * dev, char *header) {
-	uint16_t regbuf[SCI_num_registers];
-	uint8_t i;
+	//uint16_t regbuf[SCI_num_registers];
+	//uint8_t i;
 
 	ESP_LOGI(TAG, "%s", header);
 	ESP_LOGI(TAG, "REG	 Contents");
 	ESP_LOGI(TAG, "---	 -----");
-	for (i = 0; i <= SCI_num_registers; i++) {
-		regbuf[i] = read_register(dev, i);
+	for (int i = 0; i <= SCI_num_registers; i++) {
+		//regbuf[i] = read_register(dev, i);
+		uint16_t regbuf = read_register(dev, i);
 		delay(5);
-		ESP_LOGI(TAG, "%3X - %5X", i, regbuf[i]);
+		//ESP_LOGI(TAG, "%3X - %5X", i, regbuf[i]);
+		ESP_LOGI(TAG, "%3X - %5X", i, regbuf);
 	}
 #if 0
 	for (i = 0; i <= SCI_num_registers; i++) {

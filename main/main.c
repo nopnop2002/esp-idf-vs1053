@@ -7,6 +7,8 @@
    CONDITIONS OF ANY KIND, either express or implied.
 */
 
+#include <stdio.h>
+#include <inttypes.h>
 #include <string.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -57,8 +59,7 @@ MessageBufferHandle_t xMessageBuffer;
 
 EventGroupHandle_t xEventGroup;
 
-static void event_handler(void* arg, esp_event_base_t event_base,
-								int32_t event_id, void* event_data)
+static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data)
 {
 	if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
 		esp_wifi_connect();
@@ -110,21 +111,19 @@ esp_err_t wifi_init_sta(void)
 	/* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
 	 * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
 	EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
-			WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
-			pdFALSE,
-			pdFALSE,
-			portMAX_DELAY);
+		WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
+		pdFALSE,
+		pdFALSE,
+		portMAX_DELAY);
 
 	esp_err_t rcode = ESP_FAIL;
 	/* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
 	 * happened. */
 	if (bits & WIFI_CONNECTED_BIT) {
-		ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-				 CONFIG_ESP_WIFI_SSID, CONFIG_ESP_WIFI_PASSWORD);
+		ESP_LOGI(TAG, "connected to ap SSID:%s password:%s", CONFIG_ESP_WIFI_SSID, CONFIG_ESP_WIFI_PASSWORD);
 		rcode = ESP_OK;
 	} else if (bits & WIFI_FAIL_BIT) {
-		ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-				 CONFIG_ESP_WIFI_SSID, CONFIG_ESP_WIFI_PASSWORD);
+		ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s", CONFIG_ESP_WIFI_SSID, CONFIG_ESP_WIFI_PASSWORD);
 	} else {
 		ESP_LOGE(TAG, "UNEXPECTED EVENT");
 	}
@@ -144,21 +143,21 @@ esp_err_t wifi_init_sta(void)
 // Console task
 static void console_task(void *pvParameters)
 {
-	ESP_LOGI(pcTaskGetTaskName(0), "Start");
+	ESP_LOGI(pcTaskGetName(0), "Start");
 	size_t item_size;
 	while (1) {
 		char *item = (char *)xRingbufferReceive(xRingbufferConsole, &item_size, pdMS_TO_TICKS(1000));
 		if (item != NULL) {
-			ESP_LOGI(pcTaskGetTaskName(0), "xRingbufferReceive item_size=%d", item_size);
+			ESP_LOGI(pcTaskGetName(0), "xRingbufferReceive item_size=%d", item_size);
 			//Display metadata
-			ESP_LOGI(pcTaskGetTaskName(0),"\n%.*s",item_size, item);
+			ESP_LOGI(pcTaskGetName(0),"\n%.*s",item_size, item);
 			//Return Item
 			vRingbufferReturnItem(xRingbufferConsole, (void *)item);
 		}
 	}
 
 	// Don't reach here
-	ESP_LOGI(pcTaskGetTaskName(0), "Finish");
+	ESP_LOGI(pcTaskGetName(0), "Finish");
 	vTaskDelete(NULL);
 }
 #endif
@@ -167,7 +166,7 @@ static void console_task(void *pvParameters)
 // UDP Bradcast Task
 static void udp_task(void *pvParameters)
 {
-	ESP_LOGI(pcTaskGetTaskName(0), "Start");
+	ESP_LOGI(pcTaskGetName(0), "Start");
 
 	/* set up address to sendto */
 	struct sockaddr_in addr;
@@ -186,8 +185,8 @@ static void udp_task(void *pvParameters)
 	while (1) {
 		char *item = (char *)xRingbufferReceive(xRingbufferBroadcast, &item_size, pdMS_TO_TICKS(1000));
 		if (item != NULL) {
-			ESP_LOGI(pcTaskGetTaskName(0), "xRingbufferReceive item_size=%d", item_size);
-			ESP_LOGD(pcTaskGetTaskName(0),"\n%.*s",item_size, item);
+			ESP_LOGI(pcTaskGetName(0), "xRingbufferReceive item_size=%d", item_size);
+			ESP_LOGD(pcTaskGetName(0),"\n%.*s",item_size, item);
 			ret = lwip_sendto(fd, item, item_size, 0, (struct sockaddr *)&addr, sizeof(addr));
 			LWIP_ASSERT("ret == item_size", ret == item_size);
 
@@ -199,7 +198,7 @@ static void udp_task(void *pvParameters)
 	/* close socket. Don't reach here.*/
 	ret = lwip_close(fd);
 	LWIP_ASSERT("ret == 0", ret == 0);
-	ESP_LOGI(pcTaskGetTaskName(0), "Finish");
+	ESP_LOGI(pcTaskGetName(0), "Finish");
 	vTaskDelete( NULL );
 }
 #endif
@@ -228,7 +227,7 @@ static void ir_rx_task(void *arg)
 	RingbufHandle_t rb = NULL;
 	rmt_item32_t *items = NULL;
 
-	ESP_LOGI(pcTaskGetTaskName(0), "Start");
+	ESP_LOGI(pcTaskGetName(0), "Start");
 	rmt_config_t rmt_rx_config = RMT_DEFAULT_CONFIG_RX(CONFIG_RMT_RX_GPIO, ir_rx_channel);
 	rmt_config(&rmt_rx_config);
 	rmt_driver_install(ir_rx_channel, 1000, 0);
@@ -251,13 +250,13 @@ static void ir_rx_task(void *arg)
 			length /= 4; // one RMT = 4 Bytes
 			if (ir_parser->input(ir_parser, items, length) == ESP_OK) {
 				if (ir_parser->get_scan_code(ir_parser, &addr, &cmd, &repeat) == ESP_OK) {
-					ESP_LOGI(pcTaskGetTaskName(0), "Scan Code %s --- addr: 0x%04x cmd: 0x%04x", repeat ? "(repeat)" : "", addr, cmd);
+					ESP_LOGI(pcTaskGetName(0), "Scan Code %s --- addr: 0x%04x cmd: 0x%04x", repeat ? "(repeat)" : "", addr, cmd);
 					if (addr == CONFIG_IR_ADDR_ON && cmd == CONFIG_IR_CMD_ON) {
-						ESP_LOGI(pcTaskGetTaskName(0), "play start");
+						ESP_LOGI(pcTaskGetName(0), "play start");
 						xEventGroupSetBits( xEventGroup, PLAY_START_BIT );
 					}
 					if (addr == CONFIG_IR_ADDR_OFF && cmd == CONFIG_IR_CMD_OFF) {
-						ESP_LOGI(pcTaskGetTaskName(0), "play stop");
+						ESP_LOGI(pcTaskGetName(0), "play stop");
 						xEventGroupClearBits( xEventGroup, PLAY_START_BIT );
 					}
 				}
@@ -265,7 +264,7 @@ static void ir_rx_task(void *arg)
 			//after parsing the data, return spaces to ringbuffer.
 			vRingbufferReturnItem(rb, (void *) items);
 		} else {
-			ESP_LOGD(pcTaskGetTaskName(0), "xRingbufferReceive is NULL");
+			ESP_LOGD(pcTaskGetName(0), "xRingbufferReceive is NULL");
 			//break;
 		}
 	}
@@ -286,24 +285,24 @@ static void ir_rx_task(void *arg)
 
 static void vs1053_task(void *pvParameters)
 {
-	ESP_LOGI(pcTaskGetTaskName(0), "Start");
+	ESP_LOGI(pcTaskGetName(0), "Start");
 	VS1053_t dev;
 	spi_master_init(&dev,CONFIG_GPIO_CS, CONFIG_GPIO_DCS, CONFIG_GPIO_DREQ, CONFIG_GPIO_RESET);
-	ESP_LOGI(pcTaskGetTaskName(0), "spi_master_init done");
+	ESP_LOGI(pcTaskGetName(0), "spi_master_init done");
 	switchToMp3Mode(&dev);
 	//setVolume(&dev, 100);
-	ESP_LOGI(pcTaskGetTaskName(0), "CONFIG_VOLUME=%d", CONFIG_VOLUME);
+	ESP_LOGI(pcTaskGetName(0), "CONFIG_VOLUME=%d", CONFIG_VOLUME);
 	setVolume(&dev, CONFIG_VOLUME);
 
 	char *buffer = malloc(MAX_HTTP_RECV_BUFFER);
 	if (buffer == NULL) {
-		ESP_LOGE(pcTaskGetTaskName(0), "Cannot malloc http receive buffer");
+		ESP_LOGE(pcTaskGetName(0), "Cannot malloc http receive buffer");
 		while(1) { vTaskDelay(1); }
 	}
 
 	// start http client
 	xEventGroupSetBits( xEventGroup, HTTP_RESUME_BIT );
-	ESP_LOGI(pcTaskGetTaskName(0), "xEventGroupSetBits");
+	ESP_LOGI(pcTaskGetName(0), "xEventGroupSetBits");
 
 	size_t item_size;
 	while (1) {
@@ -317,7 +316,7 @@ static void vs1053_task(void *pvParameters)
 
 	// never reach here
 	free(buffer);
-	ESP_LOGI(pcTaskGetTaskName(0), "Finish");
+	ESP_LOGI(pcTaskGetName(0), "Finish");
 	vTaskDelete(NULL);
 }
 
@@ -409,8 +408,8 @@ uint16_t readHeader(int fd, HEADER_t * header) {
 		int read_len = read(fd, &buffer[index], 1);
 		if (read_len == 0) continue;
 		if (read_len < 0) {
-			ESP_LOGW(pcTaskGetTaskName(0), "read_len = %d", read_len);
-			ESP_LOGW(pcTaskGetTaskName(0), "errno = %d", errno);
+			ESP_LOGW(pcTaskGetName(0), "read_len = %d", read_len);
+			ESP_LOGW(pcTaskGetName(0), "errno = %d", errno);
 			break;
 		}
 		
@@ -461,8 +460,8 @@ int readStremDataWithMetadata(int fd, METADATA_t * hoge) {
 		int read_len = read(fd, buffer, 1);
 		if (read_len < 0) {
 			// I don't know why it is disconnected from the server.
-			ESP_LOGW(pcTaskGetTaskName(0), "read_len = %d", read_len);
-			ESP_LOGW(pcTaskGetTaskName(0), "errno = %d", errno);
+			ESP_LOGW(pcTaskGetName(0), "read_len = %d", read_len);
+			ESP_LOGW(pcTaskGetName(0), "errno = %d", errno);
 			return READFAIL;
 		}
 
@@ -497,8 +496,8 @@ int readStremDataWithMetadata(int fd, METADATA_t * hoge) {
 					int read_len = read(fd, buffer, 1);
 					if (read_len < 0) {
 						// I don't know why it is disconnected from the server.
-						ESP_LOGW(pcTaskGetTaskName(0), "read_len = %d", read_len);
-						ESP_LOGW(pcTaskGetTaskName(0), "errno = %d", errno);
+						ESP_LOGW(pcTaskGetName(0), "read_len = %d", read_len);
+						ESP_LOGW(pcTaskGetName(0), "errno = %d", errno);
 						return READFAIL;
 					}
 					hoge->metadata[i] = buffer[0];
@@ -525,8 +524,8 @@ int readStremDataWithChunked(int fd, METADATA_t * hoge) {
 		int read_len = read(fd, buffer, 1);
 		if (read_len < 0) {
 			// I don't know why it is disconnected from the server.
-			ESP_LOGW(pcTaskGetTaskName(0), "read_len = %d", read_len);
-			ESP_LOGW(pcTaskGetTaskName(0), "errno = %d", errno);
+			ESP_LOGW(pcTaskGetName(0), "read_len = %d", read_len);
+			ESP_LOGW(pcTaskGetName(0), "errno = %d", errno);
 			return READFAIL;
 		}
 
@@ -627,18 +626,18 @@ uint16_t getStreamUrl(METADATA_t * hoge) {
 
 static void client_task(void *pvParameters)
 {
-	ESP_LOGI(pcTaskGetTaskName(0), "Start");
+	ESP_LOGI(pcTaskGetName(0), "Start");
 	xEventGroupWaitBits( xEventGroup,
 			HTTP_RESUME_BIT,	/* The bits within the event group to wait for. */
 			pdTRUE,				/* HTTP_RESUME_BIT should be cleared before returning. */
 			pdFALSE,			/* Don't wait for both bits, either bit will do. */
 			portMAX_DELAY);		/* Wait forever. */
-	ESP_LOGI(pcTaskGetTaskName(0), "HTTP_RESUME_BIT");
+	ESP_LOGI(pcTaskGetName(0), "HTTP_RESUME_BIT");
 
 	// set up address to connect to
-	ESP_LOGI(pcTaskGetTaskName(0), "SERVER_HOST=%s", SERVER_HOST);
-	ESP_LOGI(pcTaskGetTaskName(0), "SERVER_PORT=%d", SERVER_PORT);
-	ESP_LOGI(pcTaskGetTaskName(0), "SERVER_PATH=%s", SERVER_PATH);
+	ESP_LOGI(pcTaskGetName(0), "SERVER_HOST=%s", SERVER_HOST);
+	ESP_LOGI(pcTaskGetName(0), "SERVER_PORT=%d", SERVER_PORT);
+	ESP_LOGI(pcTaskGetName(0), "SERVER_PATH=%s", SERVER_PATH);
 	struct sockaddr_in server;
 	memset(&server, 0, sizeof(server));
 	server.sin_family = AF_INET;
@@ -666,12 +665,12 @@ static void client_task(void *pvParameters)
 	// connect to server
 	ret = connect(fd, (struct sockaddr*)&server, sizeof(server));
 	LWIP_ASSERT("ret == 0", ret == 0);
-	ESP_LOGI(pcTaskGetTaskName(0), "Connect server");
+	ESP_LOGI(pcTaskGetName(0), "Connect server");
 
 	// allocate buffer
 	char *buffer = malloc(MAX_HTTP_SEND_BUFFER + 1);
 	if (buffer == NULL) {
-		ESP_LOGE(pcTaskGetTaskName(0), "Cannot malloc http send buffer");
+		ESP_LOGE(pcTaskGetName(0), "Cannot malloc http send buffer");
 		while(1) { vTaskDelay(1); }
 	}
 
@@ -719,8 +718,8 @@ static void client_task(void *pvParameters)
 	// Therefore, it is necessary to find the end of the header.
 	HEADER_t header;
 	readHeader(fd, &header);
-	ESP_LOGI(pcTaskGetTaskName(0), "headerBuffer=[%s]",header.headerBuffer);
-	ESP_LOGI(pcTaskGetTaskName(0), "headerSize=%d",header.headerSize);
+	ESP_LOGI(pcTaskGetName(0), "headerBuffer=[%s]",header.headerBuffer);
+	ESP_LOGI(pcTaskGetName(0), "headerSize=%d",header.headerSize);
 
 #if 0
 HTTP/1.0 200 OK
@@ -753,7 +752,7 @@ icy-metaint:16000
 	}
 
 	uint16_t metaint = getIcyMetaint(&header);
-	ESP_LOGI(pcTaskGetTaskName(0), "metaint=%d", metaint);
+	ESP_LOGI(pcTaskGetName(0), "metaint=%d", metaint);
 	free(header.headerBuffer);
 
 	METADATA_t meta;
@@ -765,13 +764,13 @@ icy-metaint:16000
 	meta.streamdataSize = 0;
 	meta.streamdata = malloc(MAX_HTTP_RECV_BUFFER);
 	if (meta.streamdata == NULL) {
-		ESP_LOGE(pcTaskGetTaskName(0), "streamdata malloc fail");
+		ESP_LOGE(pcTaskGetName(0), "streamdata malloc fail");
 		while(1) { vTaskDelay(1); }
 	}
 	meta.StreamTitle = NULL;
 	meta.StreamUrl = NULL;
 	meta.chunked = isTransferChunked(&header);
-	ESP_LOGI(pcTaskGetTaskName(0), "chunked=%d", meta.chunked);
+	ESP_LOGI(pcTaskGetName(0), "chunked=%d", meta.chunked);
 	meta.chunkCount = 0;
 
 	bool playStatus = true;
@@ -789,7 +788,7 @@ icy-metaint:16000
 		if (type == MALLOCFAIL) break;
 
 		if (type == METADATA) {
-			ESP_LOGI(pcTaskGetTaskName(0),"metadataSize=%d metadata=[%s]",meta.metadataSize, meta.metadata); 
+			ESP_LOGI(pcTaskGetName(0),"metadataSize=%d metadata=[%s]",meta.metadataSize, meta.metadata); 
 #if CONFIG_METADATA_CONSOLE || CONFIG_METADATA_BOTH
 			xRingbufferSend(xRingbufferConsole, meta.metadata, meta.metadataSize, 0);
 #endif
@@ -804,14 +803,14 @@ icy-metaint:16000
 				playStatusCheck++;
 				if (playStatusCheck == 10) {
 					EventBits_t eventBit = xEventGroupGetBits(xEventGroup);
-					ESP_LOGD(pcTaskGetTaskName(0),"eventBit=%x", eventBit);
+					ESP_LOGD(pcTaskGetName(0),"eventBit=0x%"PRIx32, eventBit);
 					//if ( (eventBit & 0x10) == 0x00) playStatus = false;
 					if ( (eventBit & PLAY_START_BIT) == 0x00) playStatus = false;
 					playStatusCheck = 0;
 				}
 			} else {
 				EventBits_t eventBit = xEventGroupGetBits(xEventGroup);
-				ESP_LOGD(pcTaskGetTaskName(0),"eventBit=%x", eventBit);
+				ESP_LOGD(pcTaskGetName(0),"eventBit=0x%"PRIx32, eventBit);
 				//if ( (eventBit & 0x10) == 0x10) playStatus = true;
 				if ( (eventBit & PLAY_START_BIT) == 0x10) playStatus = true;
 				playStatusCheck = 0;
@@ -822,11 +821,11 @@ icy-metaint:16000
 			// Adjust the read size according to the free size of xMessageBuffer.
 			size_t freeSize = xMessageBufferSpacesAvailable( xMessageBuffer );
 			meta.bufferSize = MAX_HTTP_RECV_BUFFER;
-			ESP_LOGD(pcTaskGetTaskName(0), "freeSize=%d MAX_HTTP_RECV_BUFFER*2=%d", freeSize, MAX_HTTP_RECV_BUFFER*2);
+			ESP_LOGD(pcTaskGetName(0), "freeSize=%d MAX_HTTP_RECV_BUFFER*2=%d", freeSize, MAX_HTTP_RECV_BUFFER*2);
 			if (freeSize < MAX_HTTP_RECV_BUFFER*2) {
 				meta.bufferSize = freeSize / 2;
 				//meta.bufferSize = 1;
-				ESP_LOGI(pcTaskGetTaskName(0), "freeSize=%d meta.bufferSize=%d", freeSize, meta.bufferSize);
+				ESP_LOGI(pcTaskGetName(0), "freeSize=%d meta.bufferSize=%d", freeSize, meta.bufferSize);
 				vTaskDelay(1);
 			}
 #endif
@@ -835,7 +834,7 @@ icy-metaint:16000
 			while (1) {
 				size_t freeSize = xMessageBufferSpacesAvailable( xMessageBuffer );
 				if (freeSize > MAX_HTTP_RECV_BUFFER*2) break;
-				ESP_LOGD(pcTaskGetTaskName(0), "freeSize=%d MAX_HTTP_RECV_BUFFER*2=%d", freeSize, MAX_HTTP_RECV_BUFFER*2);
+				ESP_LOGD(pcTaskGetName(0), "freeSize=%d MAX_HTTP_RECV_BUFFER*2=%d", freeSize, MAX_HTTP_RECV_BUFFER*2);
 				vTaskDelay(1);
 			}
 		}
@@ -849,7 +848,7 @@ icy-metaint:16000
 	ret = close(fd);
 	LWIP_ASSERT("ret == 0", ret == 0);
 	xEventGroupSetBits( xEventGroup, HTTP_CLOSE_BIT );
-	ESP_LOGI(pcTaskGetTaskName(0), "Finish");
+	ESP_LOGI(pcTaskGetName(0), "Finish");
 	vTaskDelete(NULL);
 }
 
