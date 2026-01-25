@@ -4,9 +4,8 @@ You can listen Internet radio.
 I ported from [here](https://github.com/baldram/ESP_VS1053_Library).
 
 # Software requirements
-esp-idf ver4.3 or later.   
-Because this project uses MessageBuffer instead of RingBuffer.   
-MessageBuffer is 3 times faster than RingBuffer.   
+ESP-IDF V5.0 or later.   
+ESP-IDF V4.4 release branch reached EOL in July 2024.   
 
 # Hardware requirements
 VS1003 or VS1053 Development Board.   
@@ -23,8 +22,7 @@ idf.py flash monitor
 ```
 
 ![config-main](https://user-images.githubusercontent.com/6020549/127245065-079abcc4-a94e-4590-a0b3-c796736e3b17.jpg)
-![config-app](https://user-images.githubusercontent.com/6020549/127245074-f738ee65-2dfe-4b62-86da-64ac56176f8d.jpg)
-
+Image](https://github.com/user-attachments/assets/979bf5ad-7fdc-4e20-98a5-8038d803b9d5)
 
 # Configuration   
 You have to set this config value with menuconfig.   
@@ -62,12 +60,6 @@ Play [this internet radio](https://somafm.com/player/#/now-playing/seventies).
 See Display Metadata section.   
 
 ![config-radio-1](https://user-images.githubusercontent.com/6020549/127245287-34956f6e-cdbe-497e-954e-fdbb31ffb5a3.jpg)
-
-
-## Infrared Setting(Optional)   
-See Infrared operation section.   
-
-![config-ir](https://user-images.githubusercontent.com/6020549/127245359-b41bad59-4aa9-42fa-8e7b-b62a9af0eaf1.jpg)
 
 
 # Wireing  
@@ -121,8 +113,6 @@ Same as Blue board.
 
 ![vs1053-GREEN](https://user-images.githubusercontent.com/6020549/81255518-cd162300-9068-11ea-9021-7fb3b2d09491.JPG)
 
----
-
 # Chip identification   
 
 - VS1003
@@ -173,54 +163,6 @@ I (17397) VS1053:   F -     0
 With the VS1003, radio stations larger than 128K bit rate cannot be played for a long time.   
 VS1003 and VS1053 have completely different performance.   
 Click [here](https://github.com/nopnop2002/esp-idf-vs1053/issues/2) for details.
-
----
-
-# Infrared operation   
-You can operate using infrared remote.   
-
-## Hardware requirements   
-- NEC or RC5 infrared remote with two or more buttons.   
-- An infrared receiver module (e.g. IRM-3638T), which integrates a demodulator and AGC circuit.   
-My recommendation is a vishay product.   
-http://www.vishay.com/ir-receiver-modules/   
-
-## Get infrared code   
-Use [this](https://github.com/espressif/esp-idf/tree/master/examples/peripherals/rmt/ir_protocols) example to get the infrared code.   
-Run this example, you will see the following output log (for NEC protocol):   
-```
-I (2000) example: Send command 0x20 to address 0x10
-I (2070) example: Scan Code  --- addr: 0x0010 cmd: 0x0020
-I (2220) example: Scan Code (repeat) --- addr: 0x0010 cmd: 0x0020
-I (4240) example: Send command 0x21 to address 0x10
-I (4310) example: Scan Code  --- addr: 0x0010 cmd: 0x0021
-I (4460) example: Scan Code (repeat) --- addr: 0x0010 cmd: 0x0021
-I (6480) example: Send command 0x22 to address 0x10
-I (6550) example: Scan Code  --- addr: 0x0010 cmd: 0x0022
-I (6700) example: Scan Code (repeat) --- addr: 0x0010 cmd: 0x0022
-I (8720) example: Send command 0x23 to address 0x10
-I (8790) example: Scan Code  --- addr: 0x0010 cmd: 0x0023
-I (8940) example: Scan Code (repeat) --- addr: 0x0010 cmd: 0x0023
-I (10960) example: Send command 0x24 to address 0x10
-I (11030) example: Scan Code  --- addr: 0x0010 cmd: 0x0024
-I (11180) example: Scan Code (repeat) --- addr: 0x0010 cmd: 0x0024
-```
-
-## Wireing   
-This is typical wireing.   
-
-![ESP32-IRRecv](https://user-images.githubusercontent.com/6020549/79027933-12117b80-7bc9-11ea-8395-0bd6b75ef75f.jpg)
-
-## Configure
-- Infrared Protocol   
-- RMT RX GPIO   
-- Remote ADDR & CMD to start PLAY   
-- Remote ADDR & CMD to stop PLAY   
-
-![config-ir-nec](https://user-images.githubusercontent.com/6020549/127245455-29e46af9-3a27-4d58-85d4-a6e1a2635dc9.jpg)
-![config-ir-rc5](https://user-images.githubusercontent.com/6020549/127245460-79292e31-a232-4315-99c1-286b06ecb7cb.jpg)
-
----
 
 # About embedded metadata
 SHOUTCast server can put a Metadata Chunk in the middle of StreamData.   
@@ -293,8 +235,6 @@ If you select UDP Broadcast, you can specify the UDP port number.
 You can use udp_receive.py to receive Broadcast metadata.   
 UDP broadcast data can be received by ESP32/ESP8266.   
 ![udp-receive](https://user-images.githubusercontent.com/6020549/120304206-8ac22280-c30a-11eb-9d81-f9a09ba43db1.jpg)
-
----
 
 # About Transfer-Encoding: chunked
 There is some radio station return [Transfer-Encoding: chunked].   

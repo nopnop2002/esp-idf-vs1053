@@ -21,9 +21,6 @@
 #include "esp_log.h"
 #include "nvs_flash.h"
 
-#include "driver/rmt.h"
-#include "ir_tools.h"
-
 #include "lwip/err.h"
 #include "lwip/sockets.h"
 #include "lwip/sys.h"
@@ -38,12 +35,12 @@ static EventGroupHandle_t s_wifi_event_group;
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP
  * - we failed to connect after the maximum amount of retries */
-#define WIFI_CONNECTED_BIT	BIT0
-#define WIFI_FAIL_BIT		BIT1
+#define WIFI_CONNECTED_BIT BIT0
+#define WIFI_FAIL_BIT BIT1
 
-#define HTTP_RESUME_BIT		BIT0
-#define HTTP_CLOSE_BIT		BIT2
-#define PLAY_START_BIT		BIT4
+#define HTTP_RESUME_BIT BIT0
+#define HTTP_CLOSE_BIT BIT2
+#define PLAY_START_BIT BIT4
 
 static const char *TAG = "MAIN";
 
@@ -102,36 +99,36 @@ esp_err_t wifi_init_sta(void)
 			.password = CONFIG_ESP_WIFI_PASSWORD
 		},
 	};
-	ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
-	ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config) );
-	ESP_ERROR_CHECK(esp_wifi_start() );
-
-	ESP_LOGI(TAG, "wifi_init_sta finished.");
+	ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+	ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
+	ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
+	ESP_ERROR_CHECK(esp_wifi_start());
 
 	/* Waiting until either the connection is established (WIFI_CONNECTED_BIT) or connection failed for the maximum
 	 * number of re-tries (WIFI_FAIL_BIT). The bits are set by event_handler() (see above) */
+	esp_err_t ret_value = ESP_OK;
 	EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
 		WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
 		pdFALSE,
 		pdFALSE,
 		portMAX_DELAY);
 
-	esp_err_t rcode = ESP_FAIL;
 	/* xEventGroupWaitBits() returns the bits before the call returned, hence we can test which event actually
 	 * happened. */
 	if (bits & WIFI_CONNECTED_BIT) {
 		ESP_LOGI(TAG, "connected to ap SSID:%s password:%s", CONFIG_ESP_WIFI_SSID, CONFIG_ESP_WIFI_PASSWORD);
-		rcode = ESP_OK;
 	} else if (bits & WIFI_FAIL_BIT) {
 		ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s", CONFIG_ESP_WIFI_SSID, CONFIG_ESP_WIFI_PASSWORD);
+		ret_value = ESP_FAIL;
 	} else {
 		ESP_LOGE(TAG, "UNEXPECTED EVENT");
+		ret_value = ESP_FAIL;
 	}
 
 	ESP_ERROR_CHECK(esp_event_handler_unregister(IP_EVENT, IP_EVENT_STA_GOT_IP, &event_handler));
 	ESP_ERROR_CHECK(esp_event_handler_unregister(WIFI_EVENT, ESP_EVENT_ANY_ID, &event_handler));
 	vEventGroupDelete(s_wifi_event_group);
-	return rcode;
+	return ret_value;
 }
 
 
@@ -862,12 +859,8 @@ void app_main(void)
 	}
 	ESP_ERROR_CHECK(ret);
 
-	// Connect wifi
-	ESP_LOGI(TAG, "ESP_WIFI_MODE_STA");
-	ret = wifi_init_sta();
-	if (ret != ESP_OK) {
-		while(1) vTaskDelay(10);
-	}
+	// Initialize WiFi
+	ESP_ERROR_CHECK(wifi_init_sta());
 
 	// Create No Split Ring Buffer 
 	// https://docs.espressif.com/projects/esp-idf/en/latest/api-reference/system/mem_alloc.html
@@ -898,26 +891,7 @@ void app_main(void)
 	xTaskCreate(&udp_task, "BROADCAST", 1024*4, NULL, 3, NULL);
 #endif
 
-
-#if CONFIG_IR_PROTOCOL_NONE
-	ESP_LOGI(TAG, "Your remote is NONE");
 	xEventGroupSetBits( xEventGroup, PLAY_START_BIT );
-#else
-#if CONFIG_IR_PROTOCOL_NEC 
-	ESP_LOGI(TAG, "Your remote is NEC");
-	xTaskCreate(&ir_rx_task, "NEC", 1024*2, NULL, 3, NULL);
-#endif
-#if CONFIG_IR_PROTOCOL_RC5
-	ESP_LOGI(TAG, "Your remote is RC5");
-	xTaskCreate(&ir_rx_task, "RC5", 1024*2, NULL, 3, NULL);
-#endif
-	ESP_LOGI(TAG, "CONFIG_ADDR_ON=0x%x", CONFIG_IR_ADDR_ON);
-	ESP_LOGI(TAG, "CONFIG_CMD_ON=0x%x", CONFIG_IR_CMD_ON);
-	ESP_LOGI(TAG, "CONFIG_ADDR_OFF=0x%x", CONFIG_IR_ADDR_OFF);
-	ESP_LOGI(TAG, "CONFIG_CMD_OFF=0x%x", CONFIG_IR_CMD_OFF);
-	xEventGroupSetBits( xEventGroup, PLAY_START_BIT );
-#endif
-
 	// Restart client task, if it stop.
 	while(1) {
 		xEventGroupWaitBits( xEventGroup,
