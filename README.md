@@ -22,7 +22,7 @@ idf.py flash monitor
 ```
 
 ![config-main](https://user-images.githubusercontent.com/6020549/127245065-079abcc4-a94e-4590-a0b3-c796736e3b17.jpg)
-Image](https://github.com/user-attachments/assets/979bf5ad-7fdc-4e20-98a5-8038d803b9d5)
+![Image](https://github.com/user-attachments/assets/979bf5ad-7fdc-4e20-98a5-8038d803b9d5)
 
 # Configuration   
 You have to set this config value with menuconfig.   
